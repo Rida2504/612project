@@ -1,0 +1,8 @@
+[
+  {
+    "name": "Japanese coffee shop (legacy v2)",
+    "url": "../outputs/splats/a_cozy_Japanese_coffee_shop_s42_v2.ply",
+    "pipeline": "legacy-v2",
+    "prompt": "a cozy Japanese coffee shop"
+  }
+]

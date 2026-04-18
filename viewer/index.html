@@ -7,446 +7,250 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            background: #111;
-            color: #eee;
+            background: #0b0b0c;
+            color: #eaeaea;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             overflow: hidden;
         }
         #header {
             position: fixed;
             top: 0; left: 0; right: 0;
-            background: rgba(0,0,0,0.85);
+            background: rgba(0,0,0,0.8);
             backdrop-filter: blur(10px);
-            padding: 12px 20px;
+            padding: 10px 18px;
             z-index: 100;
             display: flex;
             align-items: center;
-            gap: 16px;
-        }
-        #header h1 {
-            font-size: 16px;
-            font-weight: 600;
-            white-space: nowrap;
-        }
-        #header h1 span { color: #6cf; }
-        #controls {
-            display: flex;
-            gap: 12px;
-            align-items: center;
+            gap: 14px;
             flex-wrap: wrap;
         }
+        #header h1 { font-size: 15px; font-weight: 600; white-space: nowrap; }
+        #header h1 span { color: #6cf; }
         .btn {
-            background: #333;
-            border: 1px solid #555;
-            color: #eee;
-            padding: 6px 14px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
+            background: #2a2a2a; border: 1px solid #444; color: #eee;
+            padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px;
         }
-        .btn:hover { background: #444; }
-        .btn.active { background: #2563eb; border-color: #3b82f6; }
-        #file-input { display: none; }
-        #canvas-container {
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .btn:hover { background: #333; }
+        .btn.primary { background: #2563eb; border-color: #3b82f6; }
+        .btn.primary:hover { background: #1e4ecc; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        select {
+            background: #1a1a1a; border: 1px solid #444; color: #eee;
+            padding: 5px 10px; border-radius: 6px; font-size: 13px;
+            min-width: 200px;
         }
-        canvas {
-            display: block;
-            cursor: grab;
+        #canvas-container { width: 100vw; height: 100vh; }
+        #status {
+            position: fixed; bottom: 12px; left: 12px;
+            background: rgba(0,0,0,0.75); padding: 8px 12px;
+            border-radius: 6px; font-size: 12px; line-height: 1.5;
+            max-width: 360px;
         }
-        canvas:active { cursor: grabbing; }
-        #info {
-            position: fixed;
-            bottom: 16px;
-            left: 16px;
-            background: rgba(0,0,0,0.75);
-            padding: 10px 14px;
-            border-radius: 8px;
-            font-size: 12px;
-            line-height: 1.6;
-        }
-        #info .label { color: #888; }
-        #drop-zone {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(37, 99, 235, 0.3);
+        #status .k { color: #888; }
+        #status .v { color: #6cf; }
+        #fps { position: fixed; top: 60px; right: 12px; background: rgba(0,0,0,0.75);
+            padding: 6px 10px; border-radius: 6px; font-size: 12px; font-family: monospace; }
+        #dropzone {
+            position: fixed; inset: 0;
+            background: rgba(37,99,235,0.25);
             border: 4px dashed #3b82f6;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 200;
-            font-size: 24px;
-            font-weight: bold;
+            display: none; align-items: center; justify-content: center;
+            font-size: 20px; pointer-events: none; z-index: 200;
         }
-        #loading {
-            position: fixed;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            font-size: 18px;
-            display: none;
-        }
-        #loading .spinner {
-            width: 40px; height: 40px;
-            border: 3px solid #333;
-            border-top-color: #6cf;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto 12px;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .panorama-viewer {
-            width: 100%;
-            height: calc(100vh - 48px);
-            margin-top: 48px;
-        }
-        .panorama-viewer img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
+        #dropzone.show { display: flex; }
+        #xr-note { font-size: 11px; color: #888; margin-left: 8px; }
     </style>
 </head>
 <body>
     <div id="header">
         <h1>TextWorld <span>VR</span></h1>
-        <div id="controls">
-            <label class="btn" for="file-input">Open .ply / .png</label>
-            <input type="file" id="file-input" accept=".ply,.png,.jpg,.jpeg">
-            <button class="btn" id="btn-reset">Reset View</button>
-            <button class="btn" id="btn-points" title="Toggle point size">Points: 2px</button>
-        </div>
+        <select id="scene-picker" title="Scene">
+            <option value="">— load a scene —</option>
+        </select>
+        <button class="btn" id="reload">Reload</button>
+        <button class="btn primary" id="enter-vr" disabled>Enter VR</button>
+        <span id="xr-note">(requires Quest 3 / HTTPS)</span>
+        <input type="file" id="file" accept=".ply,.splat,.ksplat" style="display:none">
+        <button class="btn" id="open-file">Open .ply / .splat …</button>
     </div>
 
-    <div id="drop-zone">Drop .ply or panorama here</div>
-    <div id="loading"><div class="spinner"></div>Loading...</div>
-
-    <div id="canvas-container">
-        <canvas id="viewer"></canvas>
+    <div id="canvas-container"></div>
+    <div id="dropzone">Drop .ply / .splat / .ksplat to load</div>
+    <div id="status">
+        <div><span class="k">scene:</span> <span class="v" id="st-scene">none</span></div>
+        <div><span class="k">splats:</span> <span class="v" id="st-count">—</span></div>
+        <div><span class="k">webxr:</span> <span class="v" id="st-xr">checking…</span></div>
     </div>
+    <div id="fps">— fps</div>
 
-    <div id="info">
-        <span class="label">Gaussians:</span> <span id="info-count">—</span><br>
-        <span class="label">FPS:</span> <span id="info-fps">—</span><br>
-        <span class="label">Controls:</span> Drag=rotate, Scroll=zoom, Shift+Drag=pan
-    </div>
-
-    <script>
-    // ─── Minimal 3DGS PLY Point Cloud Viewer ────────────────────────────
-    // This renders the Gaussian centers as colored points.
-    // For full splatting, use a WebGL/WebGPU viewer like antimatter15/splat.
-
-    const canvas = document.getElementById('viewer');
-    const ctx = canvas.getContext('2d');
-    const infoCount = document.getElementById('info-count');
-    const infoFps = document.getElementById('info-fps');
-
-    let points = [];  // [{x,y,z, r,g,b, opacity, scale}]
-    let camera = { rx: 0.3, ry: 0, distance: 3, px: 0, py: 0 };
-    let pointSize = 2;
-    let isDragging = false;
-    let lastMouse = { x: 0, y: 0 };
-    let panoramaMode = false;
-
-    function resizeCanvas() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+    <!-- Three.js + mkkellogg GaussianSplats3D via CDN ESM import maps -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+            "@mkkellogg/gaussian-splats-3d": "https://cdn.jsdelivr.net/npm/@mkkellogg/gaussian-splats-3d@0.4.7/build/gaussian-splats-3d.module.min.js"
+        }
     }
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+    </script>
 
-    // ─── PLY Parser ──────────────────────────────────────────────────
-    function parsePLY(buffer) {
-        const decoder = new TextDecoder();
-        const bytes = new Uint8Array(buffer);
+    <script type="module">
+        import * as GaussianSplats3D from '@mkkellogg/gaussian-splats-3d';
+        import * as THREE from 'three';
 
-        // Find end of header
-        let headerEnd = 0;
-        const headerStr = decoder.decode(bytes.slice(0, Math.min(bytes.length, 4096)));
-        headerEnd = headerStr.indexOf('end_header\n');
-        if (headerEnd < 0) {
-            headerEnd = headerStr.indexOf('end_header\r\n');
-            headerEnd += 12;
-        } else {
-            headerEnd += 11;
-        }
+        const container = document.getElementById('canvas-container');
+        const picker = document.getElementById('scene-picker');
+        const vrBtn = document.getElementById('enter-vr');
+        const reloadBtn = document.getElementById('reload');
+        const openBtn = document.getElementById('open-file');
+        const fileInput = document.getElementById('file');
+        const dropzone = document.getElementById('dropzone');
+        const stScene = document.getElementById('st-scene');
+        const stCount = document.getElementById('st-count');
+        const stXr = document.getElementById('st-xr');
+        const fpsEl = document.getElementById('fps');
 
-        // Parse header
-        const header = headerStr.slice(0, headerEnd);
-        const vertexMatch = header.match(/element vertex (\d+)/);
-        const numVertices = vertexMatch ? parseInt(vertexMatch[1]) : 0;
+        let viewer = null;
+        let currentSceneUrl = null;
 
-        // Detect properties
-        const props = [];
-        const propLines = header.split('\n').filter(l => l.startsWith('property'));
-        for (const line of propLines) {
-            const parts = line.trim().split(/\s+/);
-            props.push({ type: parts[1], name: parts[2] });
-        }
-
-        // Find property indices
-        const propIndex = {};
-        props.forEach((p, i) => { propIndex[p.name] = i; });
-
-        // Calculate bytes per vertex
-        let bytesPerVertex = 0;
-        const propOffsets = [];
-        for (const p of props) {
-            propOffsets.push(bytesPerVertex);
-            if (p.type === 'float') bytesPerVertex += 4;
-            else if (p.type === 'uchar') bytesPerVertex += 1;
-            else if (p.type === 'double') bytesPerVertex += 8;
-            else if (p.type === 'int') bytesPerVertex += 4;
-            else if (p.type === 'short') bytesPerVertex += 2;
-            else bytesPerVertex += 4; // default
-        }
-
-        // Encode header bytes
-        const headerBytes = new TextEncoder().encode(header.slice(0, headerEnd));
-        const dataStart = headerEnd;
-        const dataView = new DataView(buffer, dataStart);
-
-        const result = [];
-        for (let i = 0; i < numVertices; i++) {
-            const offset = i * bytesPerVertex;
-
-            function getFloat(name) {
-                const idx = propIndex[name];
-                if (idx === undefined) return 0;
-                return dataView.getFloat32(offset + propOffsets[idx], true);
+        function initViewer() {
+            if (viewer) {
+                viewer.dispose && viewer.dispose();
+                viewer = null;
             }
-            function getUchar(name) {
-                const idx = propIndex[name];
-                if (idx === undefined) return 128;
-                return dataView.getUint8(offset + propOffsets[idx]);
-            }
-
-            const x = getFloat('x');
-            const y = getFloat('y');
-            const z = getFloat('z');
-            const r = getUchar('red');
-            const g = getUchar('green');
-            const b = getUchar('blue');
-
-            let opacity = 1.0;
-            if (propIndex['opacity'] !== undefined) {
-                const rawOp = getFloat('opacity');
-                opacity = 1.0 / (1.0 + Math.exp(-rawOp));  // sigmoid
-            }
-
-            let scale = 0.01;
-            if (propIndex['scale_0'] !== undefined) {
-                scale = Math.exp(getFloat('scale_0'));
-            }
-
-            result.push({ x, y, z, r, g, b, opacity, scale });
+            viewer = new GaussianSplats3D.Viewer({
+                rootElement: container,
+                useBuiltInControls: true,
+                // WebXR
+                webXRMode: GaussianSplats3D.WebXRMode.VR,
+                // Perf on mobile/Quest
+                sharedMemoryForWorkers: false,
+                dynamicScene: false,
+                gpuAcceleratedSort: true,
+                halfPrecisionCovariancesOnGPU: true,
+            });
+            viewer.start();
         }
 
-        return result;
-    }
-
-    // ─── 3D Projection ───────────────────────────────────────────────
-    function project(point) {
-        let { x, y, z } = point;
-
-        // Translate
-        x -= camera.px;
-        y -= camera.py;
-
-        // Rotate Y
-        const cosY = Math.cos(camera.ry);
-        const sinY = Math.sin(camera.ry);
-        const x1 = x * cosY + z * sinY;
-        const z1 = -x * sinY + z * cosY;
-
-        // Rotate X
-        const cosX = Math.cos(camera.rx);
-        const sinX = Math.sin(camera.rx);
-        const y1 = y * cosX - z1 * sinX;
-        const z2 = y * sinX + z1 * cosX;
-
-        // Perspective
-        const dz = z2 + camera.distance;
-        if (dz < 0.01) return null;
-
-        const fov = canvas.width * 0.8;
-        const sx = (x1 / dz) * fov + canvas.width / 2;
-        const sy = -(y1 / dz) * fov + canvas.height / 2;
-
-        return { sx, sy, depth: dz };
-    }
-
-    // ─── Render ──────────────────────────────────────────────────────
-    let lastFrameTime = performance.now();
-    let frameCount = 0;
-
-    function render() {
-        ctx.fillStyle = '#111';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        if (points.length === 0) {
-            ctx.fillStyle = '#555';
-            ctx.font = '18px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('Drop a .ply file or click "Open" to view', canvas.width/2, canvas.height/2);
-            requestAnimationFrame(render);
-            return;
-        }
-
-        // Project all points
-        const projected = [];
-        for (const p of points) {
-            const proj = project(p);
-            if (proj && proj.sx > -100 && proj.sx < canvas.width + 100 &&
-                proj.sy > -100 && proj.sy < canvas.height + 100) {
-                projected.push({ ...proj, r: p.r, g: p.g, b: p.b, opacity: p.opacity });
+        async function loadScene(url, friendlyName) {
+            if (!viewer) initViewer();
+            try {
+                stScene.textContent = friendlyName || url;
+                stCount.textContent = 'loading…';
+                await viewer.addSplatScene(url, {
+                    splatAlphaRemovalThreshold: 5,
+                    showLoadingUI: true,
+                    position: [0, 0, 0],
+                    rotation: [0, 0, 0, 1],
+                    scale: [1, 1, 1],
+                });
+                currentSceneUrl = url;
+                // Splats count — peek at the internal store if available
+                const total = viewer.splatMesh?.getSplatCount?.() ?? 'unknown';
+                stCount.textContent = total;
+            } catch (e) {
+                console.error(e);
+                stCount.textContent = 'error: ' + e.message;
             }
         }
 
-        // Sort back-to-front
-        projected.sort((a, b) => b.depth - a.depth);
-
-        // Draw
-        for (const p of projected) {
-            const alpha = Math.min(1, p.opacity);
-            if (alpha < 0.02) continue;
-
-            ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},${alpha})`;
-            const size = Math.max(1, pointSize * (2.0 / p.depth));
-            ctx.fillRect(p.sx - size/2, p.sy - size/2, size, size);
-        }
-
-        // FPS
-        frameCount++;
-        const now = performance.now();
-        if (now - lastFrameTime > 1000) {
-            infoFps.textContent = Math.round(frameCount * 1000 / (now - lastFrameTime));
-            frameCount = 0;
-            lastFrameTime = now;
-        }
-
-        requestAnimationFrame(render);
-    }
-
-    // ─── Mouse Controls ──────────────────────────────────────────────
-    canvas.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        lastMouse = { x: e.clientX, y: e.clientY };
-    });
-
-    window.addEventListener('mouseup', () => { isDragging = false; });
-
-    window.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        const dx = e.clientX - lastMouse.x;
-        const dy = e.clientY - lastMouse.y;
-
-        if (e.shiftKey) {
-            // Pan
-            camera.px -= dx * 0.005 * camera.distance;
-            camera.py += dy * 0.005 * camera.distance;
-        } else {
-            // Rotate
-            camera.ry += dx * 0.005;
-            camera.rx += dy * 0.005;
-            camera.rx = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rx));
-        }
-
-        lastMouse = { x: e.clientX, y: e.clientY };
-    });
-
-    canvas.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        camera.distance *= 1 + e.deltaY * 0.001;
-        camera.distance = Math.max(0.1, Math.min(50, camera.distance));
-    }, { passive: false });
-
-    // ─── File Loading ────────────────────────────────────────────────
-    function loadFile(file) {
-        const loading = document.getElementById('loading');
-        loading.style.display = 'block';
-
-        if (file.name.endsWith('.ply')) {
-            panoramaMode = false;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                points = parsePLY(e.target.result);
-                infoCount.textContent = points.length.toLocaleString();
-                loading.style.display = 'none';
-
-                // Auto-center
-                if (points.length > 0) {
-                    let cx = 0, cy = 0, cz = 0;
-                    for (const p of points) { cx += p.x; cy += p.y; cz += p.z; }
-                    cx /= points.length; cy /= points.length; cz /= points.length;
-                    camera.px = cx; camera.py = cy;
-                    camera.distance = 3;
+        // ─── Scene picker ──────────────────────────────────────────────
+        async function populateScenes() {
+            try {
+                const res = await fetch('./scenes.json');
+                const scenes = await res.json();
+                for (const s of scenes) {
+                    const opt = document.createElement('option');
+                    opt.value = s.url;
+                    opt.textContent = s.name;
+                    opt.dataset.name = s.name;
+                    picker.appendChild(opt);
                 }
-            };
-            reader.readAsArrayBuffer(file);
-        } else if (file.name.match(/\.(png|jpg|jpeg)$/i)) {
-            // Show panorama
-            panoramaMode = true;
-            const url = URL.createObjectURL(file);
-            const container = document.getElementById('canvas-container');
-            canvas.style.display = 'none';
-            let panoDiv = document.querySelector('.panorama-viewer');
-            if (!panoDiv) {
-                panoDiv = document.createElement('div');
-                panoDiv.className = 'panorama-viewer';
-                panoDiv.innerHTML = `<img src="${url}" alt="panorama">`;
-                container.appendChild(panoDiv);
-            } else {
-                panoDiv.querySelector('img').src = url;
+                picker.addEventListener('change', () => {
+                    if (picker.value) {
+                        const name = picker.options[picker.selectedIndex].dataset.name;
+                        loadScene(picker.value, name);
+                    }
+                });
+            } catch (e) {
+                console.warn('No scenes.json found or invalid:', e);
             }
-            infoCount.textContent = 'Panorama';
-            loading.style.display = 'none';
         }
-    }
 
-    document.getElementById('file-input').addEventListener('change', (e) => {
-        if (e.target.files[0]) loadFile(e.target.files[0]);
-    });
-
-    // Drag and drop
-    const dropZone = document.getElementById('drop-zone');
-    document.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.style.display = 'flex';
-    });
-    document.addEventListener('dragleave', (e) => {
-        if (e.target === dropZone) dropZone.style.display = 'none';
-    });
-    document.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.style.display = 'none';
-        if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
-    });
-
-    // Reset view
-    document.getElementById('btn-reset').addEventListener('click', () => {
-        camera = { rx: 0.3, ry: 0, distance: 3, px: 0, py: 0 };
-        if (panoramaMode) {
-            canvas.style.display = 'block';
-            const pano = document.querySelector('.panorama-viewer');
-            if (pano) pano.remove();
-            panoramaMode = false;
+        // ─── WebXR availability ────────────────────────────────────────
+        async function checkWebXR() {
+            if (!('xr' in navigator)) {
+                stXr.textContent = 'not supported (no navigator.xr)';
+                return false;
+            }
+            try {
+                const supported = await navigator.xr.isSessionSupported('immersive-vr');
+                if (supported) {
+                    stXr.textContent = 'immersive-vr ready';
+                    vrBtn.disabled = false;
+                    return true;
+                } else {
+                    stXr.textContent = 'immersive-vr not supported on this device';
+                }
+            } catch (e) {
+                stXr.textContent = 'error: ' + e.message;
+            }
+            return false;
         }
-    });
 
-    // Point size
-    const btnPoints = document.getElementById('btn-points');
-    btnPoints.addEventListener('click', () => {
-        pointSize = pointSize >= 6 ? 1 : pointSize + 1;
-        btnPoints.textContent = `Points: ${pointSize}px`;
-    });
+        vrBtn.addEventListener('click', () => {
+            if (viewer && viewer.renderer?.xr) {
+                const session = navigator.xr.requestSession('immersive-vr', {
+                    optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking'],
+                });
+                session.then(s => viewer.renderer.xr.setSession(s)).catch(console.error);
+            }
+        });
 
-    // Start render loop
-    render();
+        // ─── Dev: drag-drop + file picker ──────────────────────────────
+        document.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('show'); });
+        document.addEventListener('dragleave', e => {
+            if (e.target === document.documentElement) dropzone.classList.remove('show');
+        });
+        document.addEventListener('drop', async e => {
+            e.preventDefault();
+            dropzone.classList.remove('show');
+            const f = e.dataTransfer.files[0];
+            if (!f) return;
+            const url = URL.createObjectURL(f);
+            await loadScene(url, f.name);
+        });
+
+        openBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', async () => {
+            const f = fileInput.files[0];
+            if (!f) return;
+            const url = URL.createObjectURL(f);
+            await loadScene(url, f.name);
+        });
+
+        reloadBtn.addEventListener('click', () => {
+            if (currentSceneUrl) loadScene(currentSceneUrl, picker.options[picker.selectedIndex]?.dataset.name);
+        });
+
+        // ─── FPS counter ───────────────────────────────────────────────
+        let lastTime = performance.now();
+        let frames = 0;
+        function tick(now) {
+            frames++;
+            if (now - lastTime >= 1000) {
+                fpsEl.textContent = frames + ' fps';
+                frames = 0;
+                lastTime = now;
+            }
+            requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+
+        // ─── Boot ──────────────────────────────────────────────────────
+        initViewer();
+        populateScenes();
+        checkWebXR();
     </script>
 </body>
 </html>

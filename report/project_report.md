@@ -199,7 +199,11 @@ Full build: `scripts/zaratan/build_venv.sh` (main venv),
 ## 9. Deliverables
 
 - **Code:** git tree in this repo — see `git log` for full history
-- **Viewer:** `www/viewer/index.html` — 30-scene picker with WebXR mode (served on login via `python -m http.server 8765 --directory ~/scratch/phase4/textworld-vr/www`). Demo screenshot: [report/figures/demo_art_gallery_s43.png](figures/demo_art_gallery_s43.png) — a 1.08 M-Gaussian render at 120 fps.
+- **Viewer:** `www/viewer/index.html` — 30-scene picker with WebXR mode (served on login via `python -m http.server 8765 --directory ~/scratch/phase4/textworld-vr/www`). Demo screenshots from inside the splat volume (the Quest user's POV):
+  - Coffee shop interior ([figures/demo_inside_coffee_shop.png](figures/demo_inside_coffee_shop.png)) — 1.0 M Gaussians
+  - Cyberpunk noodle bar interior ([figures/demo_inside_cyberpunk.png](figures/demo_inside_cyberpunk.png)) — 773 K Gaussians, neon palette
+  - Library interior ([figures/demo_inside_library.png](figures/demo_inside_library.png)) — 976 K Gaussians, bookshelves visible
+  - Exterior "shell" view for reference: [figures/demo_art_gallery_s43.png](figures/demo_art_gallery_s43.png) (same scene from outside the panorama-depth sphere)
 - **Report:** this file
 - **Plots:** [report/figures/metrics_overview.png](figures/metrics_overview.png), [report/figures/per_scene.png](figures/per_scene.png)
 - **Raw CSVs:** [report/data/pipeline_v1_clip.csv](data/pipeline_v1_clip.csv), [pipeline_v2_clip.csv](data/pipeline_v2_clip.csv), [pipeline_combined_clip.csv](data/pipeline_combined_clip.csv)

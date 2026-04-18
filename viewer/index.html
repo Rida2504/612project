@@ -121,6 +121,12 @@
             viewer = new GaussianSplats3D.Viewer({
                 rootElement: container,
                 useBuiltInControls: true,
+                // Place camera inside the panorama-depth sphere so the user looks OUTward
+                // at the scene interior, not at the sphere-shell from outside.
+                // Values in scene units; the back-projected shell sits at unit radius ~1.
+                cameraUp: [0, 1, 0],
+                initialCameraPosition: [0, 0, 0.001],
+                initialCameraLookAt: [1, 0, 0],
                 // WebXR
                 webXRMode: GaussianSplats3D.WebXRMode.VR,
                 // Perf on mobile/Quest
@@ -130,6 +136,7 @@
                 halfPrecisionCovariancesOnGPU: true,
             });
             viewer.start();
+            window.__tw_viewer = viewer;  // debug handle
         }
 
         let loadInFlight = null;

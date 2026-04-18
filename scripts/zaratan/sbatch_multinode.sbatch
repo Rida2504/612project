@@ -48,11 +48,13 @@ mkdir -p "$STRIPED/code" "$STRIPED/outputs" "$STRIPED/hf_cache"
 rsync -a --exclude='outputs/' --exclude='.git/' --exclude='__pycache__/' \
       "$CODE_ROOT/" "$STRIPED/code/"
 
-# Start the background sync daemon on rank-0 node only (pushes striped → scratch)
-echo "== starting sync daemon on rank-0 node =="
-srun --nodes=1 --ntasks=1 --nodelist=$(scontrol show hostnames $SLURM_NODELIST | head -1) \
-     nohup bash "$CODE_ROOT/scripts/zaratan/sync_out.sh" \
+# Start the background sync daemon here (the sbatch script runs on the batch host
+# = first allocated node). This process lives for the lifetime of the job.
+echo "== starting sync daemon =="
+bash "$CODE_ROOT/scripts/zaratan/sync_out.sh" \
      > "$HOME/scratch/phase4/textworld-vr/logs/sync-$SLURM_JOB_ID.log" 2>&1 &
+SYNC_PID=$!
+echo "== sync daemon PID=$SYNC_PID"
 
 # Idle loop: keep the job alive for interactive ssh-in. Each node can be
 # reached via scontrol show hostnames; user ssh's in to run experiments.

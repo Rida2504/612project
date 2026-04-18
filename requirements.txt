@@ -17,7 +17,24 @@ opencv-python>=4.8.0
 
 # Evaluation
 scipy>=1.11.0
+lpips>=0.1.4
+scikit-image>=0.22.0
+
+# Point cloud / splat I/O
+plyfile>=1.0.3
+trimesh>=4.0.0
+
+# Plotting for reports
+matplotlib>=3.8.0
 
 # Utilities
 tqdm>=4.65.0
 pyyaml>=6.0
+
+# Optional GPU-only (uncomment on Zaratan A100/H100):
+# gsplat>=1.4.0           # CUDA-accelerated 3DGS rasterization
+# torch-scatter>=2.1.2
+# nerfstudio>=1.1.4       # splatfacto alternative to gsplat
+# Also for panorama-specific depth (choose one):
+#   pip install git+https://github.com/DepthAnything/Depth-Anything-V2   # perspective DA-v2
+#   pip install transformers>=4.36.0                                     # HF wrapper for DA-v2 (already above)

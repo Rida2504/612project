@@ -75,6 +75,62 @@ def run_stage2(panorama_path: str, config: dict) -> str:
     return output_dir
 
 
+def run_stage2_depth(panorama_path: str, config: dict) -> str:
+    """Stage 2 (new): panorama → monocular depth → colored point cloud (.ply).
+
+    This replaces the parallax-less `extract_views` approach of the legacy
+    Stage 2 with a real 3D point cloud suitable for 3DGS initialization.
+    """
+    from stage2_multiview.pano_depth import pano_to_pointcloud
+
+    depth_cfg = config.get("depth", {}) or {}
+    pano_name = Path(panorama_path).stem
+    output_dir = Path(config.get("output_dir", "outputs")) / "pointclouds"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    out_ply = str(output_dir / f"{pano_name}.ply")
+
+    pano_to_pointcloud(
+        panorama_path,
+        out_ply,
+        depth_model=depth_cfg.get("model", "depth-anything/Depth-Anything-V2-Small-hf"),
+        max_points=depth_cfg.get("max_points", 500_000),
+        fallback_if_no_weights=depth_cfg.get("fallback_if_no_weights", False),
+        use_model=depth_cfg.get("use_model", True),
+        seed=depth_cfg.get("seed", 0),
+        save_depth_viz=depth_cfg.get("save_depth_viz", True),
+    )
+    print(f"[Stage 2-depth] Point cloud saved: {out_ply}")
+    return out_ply
+
+
+def run_stage3_gsplat(multiview_dir: str, init_ply: str, config: dict) -> str:
+    """Stage 3 (new): gsplat-based 3DGS training with depth-initialized Gaussians."""
+    from stage3_3dgs.train_gsplat import train_gsplat
+
+    gs_cfg = config.get("gaussian_splatting", {}) or {}
+    output_dir = Path(config.get("output_dir", "outputs")) / "splats"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    scene_name = Path(multiview_dir).name
+    out_ply = str(output_dir / f"{scene_name}_gsplat.ply")
+    log_csv = str(output_dir / f"{scene_name}_gsplat.log.csv")
+    device_str = config.get("panorama", {}).get("device", "mps")
+
+    train_gsplat(
+        multiview_dir,
+        init_ply,
+        out_ply,
+        num_iters=gs_cfg.get("num_iters", 500),
+        device_str=device_str,
+        downscale=gs_cfg.get("downscale", 2),
+        sh_degree=gs_cfg.get("sh_degree", 1),
+        max_gaussians=gs_cfg.get("max_gaussians", 100_000),
+        log_csv=log_csv,
+        force_fallback=gs_cfg.get("force_fallback", False),
+    )
+    print(f"[Stage 3-gsplat] Splat saved: {out_ply}")
+    return out_ply
+
+
 def run_stage3(multiview_dir: str, config: dict, use_v2: bool = True) -> str:
     """Stage 3: Run 3DGS reconstruction."""
     output_dir = Path(config.get("output_dir", "outputs")) / "splats"
@@ -182,11 +238,21 @@ def main():
                         help="Unity project path for Stage 4")
     parser.add_argument("--v1", action="store_true",
                         help="Use v1 3DGS trainer (simpler, faster)")
+    parser.add_argument("--use-depth-init", action="store_true", default=True,
+                        help="New default: Stage 2 = panorama depth → point cloud, "
+                             "Stage 3 = gsplat with depth-based Gaussian init. Addresses "
+                             "the parallax-less-multiview issue of the legacy pipeline.")
+    parser.add_argument("--legacy", action="store_true",
+                        help="Use the legacy extract_views + random-init v2 trainer path.")
     parser.add_argument("--evaluate", action="store_true",
                         help="Run evaluation metrics after pipeline")
     parser.add_argument("--viewer", action="store_true",
                         help="Open web viewer after pipeline")
     args = parser.parse_args()
+
+    # --legacy overrides --use-depth-init
+    if args.legacy:
+        args.use_depth_init = False
 
     # Load config
     config_path = Path(args.config)
@@ -207,25 +273,49 @@ def main():
         print("=" * 60)
         panorama_path = run_stage1(args.prompt, config, args.seed, output_path=None)
 
-    # Stage 2
+    # Stage 2 — when --use-depth-init (default), run BOTH:
+    #   (a) pano → depth → point cloud (for 3DGS init)
+    #   (b) extract perspective views (for photometric supervision)
+    init_ply = None
     if 2 in args.stages and multiview_dir is None and splat_ply is None:
         if panorama_path is None:
             print("ERROR: Need a panorama for Stage 2. Run Stage 1 or pass --panorama.")
             return
+        if args.use_depth_init:
+            print("\n" + "=" * 60)
+            print("STAGE 2a: Panorama → Depth → Point Cloud (new, depth-init)")
+            print("=" * 60)
+            init_ply = run_stage2_depth(panorama_path, config)
         print("\n" + "=" * 60)
-        print("STAGE 2: Panorama → Multi-View Extraction")
+        print("STAGE 2b: Panorama → Multi-View Extraction (for supervision)")
         print("=" * 60)
         multiview_dir = run_stage2(panorama_path, config)
 
-    # Stage 3
+    # Stage 3 — route to gsplat (depth-init) or legacy v2 trainer
     if 3 in args.stages and splat_ply is None:
         if multiview_dir is None:
             print("ERROR: Need multi-view dir for Stage 3. Run Stages 1-2 or pass --multiview-dir.")
             return
-        print("\n" + "=" * 60)
-        print("STAGE 3: Multi-Views → 3D Gaussian Splatting")
-        print("=" * 60)
-        splat_ply = run_stage3(multiview_dir, config, use_v2=not args.v1)
+        if args.use_depth_init:
+            if init_ply is None:
+                # Try to locate an existing pointcloud .ply
+                pano_stem = Path(panorama_path).stem if panorama_path else Path(multiview_dir).name
+                guess = Path(config.get("output_dir", "outputs")) / "pointclouds" / f"{pano_stem}.ply"
+                if guess.exists():
+                    init_ply = str(guess)
+                else:
+                    print(f"ERROR: --use-depth-init requires a point cloud. Run stage 2 or "
+                          f"provide --panorama. Expected: {guess}")
+                    return
+            print("\n" + "=" * 60)
+            print("STAGE 3: gsplat (CUDA) with depth-initialized Gaussians")
+            print("=" * 60)
+            splat_ply = run_stage3_gsplat(multiview_dir, init_ply, config)
+        else:
+            print("\n" + "=" * 60)
+            print("STAGE 3: Multi-Views → 3D Gaussian Splatting (LEGACY)")
+            print("=" * 60)
+            splat_ply = run_stage3(multiview_dir, config, use_v2=not args.v1)
 
     # Stage 4
     if 4 in args.stages:

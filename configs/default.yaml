@@ -1,0 +1,65 @@
+# TextWorld VR Pipeline Configuration
+
+# Stage 1: Panorama Generation
+panorama:
+  # --- Option A (default): Base SDXL + 360Redmond LoRA ---
+  model_id: "stabilityai/stable-diffusion-xl-base-1.0"
+  lora_id: "artificialguybr/360Redmond"
+  lora_weight: 0.8
+  lora_weight_name: "View360.safetensors"
+
+  # --- Option B: Full fine-tune (requires manual download, not on diffusers hub) ---
+  # model_id: "ProGamerGov/sdxl-360-diffusion"
+  # lora_id: null
+  # lora_weight_name: null
+
+  # Generation settings
+  width: 2048
+  height: 1024
+  num_inference_steps: 40
+  guidance_scale: 7.5
+  seed: null  # null = random
+
+  # Prompt engineering (tuned for 360Redmond LoRA)
+  prompt_prefix: "360 view of "
+  prompt_suffix: ", high quality, detailed, photorealistic"
+  negative_prompt: "blurry, low quality, distorted, watermark, text, logo, seam visible, low resolution, cartoon, painting"
+
+  # Device
+  device: "mps"  # mps for M4 Mac, cuda for Zaratan A100/H100
+  dtype: "float16"  # float16 for speed, float32 for quality on MPS if needed
+
+# Stage 2: Multi-View Extraction
+multiview:
+  num_views: 8           # number of perspective views to extract
+  fov_degrees: 90        # field of view per view
+  output_width: 1024     # perspective image width
+  output_height: 1024    # perspective image height
+  elevation_angles: [0]  # degrees from horizon (0 = eye level)
+
+# Stage 3: 3D Gaussian Splatting
+gaussian_splatting:
+  num_iters: 3000         # training iterations (v2 default)
+  num_points: 10000       # initial number of Gaussians
+  lr: 0.005               # learning rate
+  downscale: 2            # downscale input images for speed
+  sh_degree: 3            # spherical harmonics degree (0-3)
+  max_gaussians: 50000    # cap for adaptive densification
+  lambda_ssim: 0.2        # weight for SSIM loss (0 = L1 only)
+  save_interval: 500      # save progress renders every N steps
+
+  # Densification schedule
+  densify_start: 500
+  densify_stop: 2500
+  densify_interval: 200
+  prune_interval: 300
+
+# Stage 4: VR Rendering
+vr:
+  unity_project: "~/Unity/TextWorldVR"
+  target_fps: 72          # 72 for Quest 2, 90 for Quest 3
+  max_gaussians: 500000   # render budget
+  platform: "Meta Quest"
+
+# Output
+output_dir: "outputs"

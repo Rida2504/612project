@@ -1,0 +1,23 @@
+# Stage 1: Panorama Generation
+torch>=2.1.0
+torchvision>=0.16.0
+diffusers>=0.27.0
+transformers>=4.36.0
+accelerate>=0.25.0
+safetensors>=0.4.0
+peft>=0.8.0
+Pillow>=10.0.0
+numpy>=1.24.0
+
+# Stage 2: Multi-View Extraction
+opencv-python>=4.8.0
+
+# Stage 3: 3DGS Training (pure PyTorch, no C++ deps)
+# (uses torch, opencv, numpy from above)
+
+# Evaluation
+scipy>=1.11.0
+
+# Utilities
+tqdm>=4.65.0
+pyyaml>=6.0

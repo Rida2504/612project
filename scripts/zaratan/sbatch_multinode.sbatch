@@ -9,83 +9,95 @@
 #SBATCH --gres=gpu:h100:4
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=128G
-#SBATCH --tmp=4000G
+#SBATCH --constraint=beeond
 #SBATCH --time=23:00:00
 #SBATCH --output=/home/%u/scratch/phase4/textworld-vr/logs/%x.%j.out
 #SBATCH --error=/home/%u/scratch/phase4/textworld-vr/logs/%x.%j.err
 # ─────────────────────────────────────────────────────────────────────────
-# 23h persistent job on 2× H100 nodes. The --tmp=4000G + --exclusive +
-# --nodes=2 combination triggers Zaratan's native striped scratch at
-# /scratch/local/$SLURM_JOB_ID (combined /tmp of both nodes).
+# 23h persistent job on 2× H100 nodes with BeeOND.
 #
-# If striping isn't created (older kernel, bad node), the script falls
-# back gracefully to per-node /tmp/$USER with a BeeGFS sync daemon.
+# --constraint=beeond + --exclusive + --nodes=2 tells Zaratan to stripe the
+# node-local /tmp of every allocated node into a single shared filesystem
+# at /scratch/local/$SLURM_JOB_ID, mounted read-write from all nodes.
+#
+# See https://hpcc.umd.edu/kb/storage/#beeond-multi-node-high-performance-temporary-storage
 # ─────────────────────────────────────────────────────────────────────────
 
-set -uo pipefail   # note: no -e, we want to survive partial failures
+set -uo pipefail   # survive partial failures
 
 CODE_ROOT="$HOME/scratch/phase4/textworld-vr/code"
+SCRATCH_ROOT="$HOME/scratch/phase4/textworld-vr"
 STRIPED="/scratch/local/$SLURM_JOB_ID"
-LOG_DIR="$HOME/scratch/phase4/textworld-vr/logs"
+LOG_DIR="$SCRATCH_ROOT/logs"
 mkdir -p "$LOG_DIR"
 
 echo "== $(date) == starting job $SLURM_JOB_ID"
 echo "== nodes: $SLURM_NODELIST"
 echo "== expanded: $(scontrol show hostnames $SLURM_NODELIST | tr '\n' ' ')"
+echo "== BeeOND expected at: $STRIPED"
 
-# Bootstrap each node's local /tmp workspace. Runs in parallel via srun.
-echo "== bootstrapping all nodes via srun =="
-srun --ntasks=$SLURM_JOB_NUM_NODES --ntasks-per-node=1 --label \
-     bash "$CODE_ROOT/scripts/zaratan/bootstrap_node.sh" || \
-     echo "!! bootstrap_node.sh had errors, continuing"
+# Probe BeeOND from every node. If it's not there, fail loudly rather than
+# silently falling back — we chose the proper solution, we want it to work.
+echo "== verifying BeeOND is mounted on all nodes =="
+srun --ntasks=$SLURM_JOB_NUM_NODES --ntasks-per-node=1 --label bash -c "
+    hostname
+    if [ ! -d '$STRIPED' ]; then
+        echo 'ERROR: BeeOND not mounted at $STRIPED on \$(hostname)'
+        exit 1
+    fi
+    df -h '$STRIPED' | tail -1
+    stat -c 'mounted-type=%T' '$STRIPED'
+" 2>&1 | tee "$LOG_DIR/beeond-probe-$SLURM_JOB_ID.log"
 
-# Probe for striped /scratch/local on each node
-echo "== probing striped scratch: $STRIPED =="
-srun --ntasks=$SLURM_JOB_NUM_NODES --ntasks-per-node=1 --label bash -c \
-    "hostname; if [ -d '$STRIPED' ]; then echo 'STRIPED_OK'; df -h '$STRIPED' | tail -1; \
-     else echo 'NO_STRIPED'; fi" 2>&1 | tee "$LOG_DIR/striped-probe-$SLURM_JOB_ID.log"
-
-USE_STRIPED=false
-if srun --nodes=1 --ntasks=1 test -d "$STRIPED"; then
-    USE_STRIPED=true
-    echo "== striped scratch available, using $STRIPED as workspace =="
-    mkdir -p "$STRIPED/code" "$STRIPED/outputs" "$STRIPED/hf_cache" 2>/dev/null || true
-    rsync -a --exclude='outputs/' --exclude='.git/' --exclude='__pycache__/' \
-          "$CODE_ROOT/" "$STRIPED/code/" || echo "!! rsync to striped failed"
-    echo "STRIPED_WORKSPACE=$STRIPED" > "$LOG_DIR/workspace-$SLURM_JOB_ID.env"
-else
-    echo "== falling back to per-node /tmp + BeeGFS sync (Path 1) =="
-    echo "WORKSPACE_PER_NODE_TMP=/tmp/$USER/textworld-vr" > "$LOG_DIR/workspace-$SLURM_JOB_ID.env"
+if [ ! -d "$STRIPED" ]; then
+    echo "FATAL: BeeOND not available. Check partition/QOS supports -C beeond."
+    exit 1
 fi
 
-# Start the background sync daemon on EVERY allocated node via tmux, so each
-# node's /tmp gets rsync'd to ~/scratch independently. tmux ensures the daemon
-# survives ssh session lifecycle changes. Backgrounded w/ srun so this doesn't
-# block the main sbatch.
-echo "== starting sync daemon on all nodes via srun+tmux =="
-srun --ntasks=$SLURM_JOB_NUM_NODES --ntasks-per-node=1 --label bash -c '
-    tmux kill-session -t sync 2>/dev/null || true
-    tmux new-session -d -s sync "bash '"$CODE_ROOT"'/scripts/zaratan/sync_out.sh 2>&1 | tee '"$LOG_DIR"'/sync-$(hostname)-'"$SLURM_JOB_ID"'.log"
-    echo "sync started on $(hostname): $(tmux ls)"
-' 2>&1 | tee -a "$LOG_DIR/sync-startup-$SLURM_JOB_ID.log"
+# Seed BeeOND with the workspace. Rank-0 does it once; every other node sees
+# it instantly because /scratch/local/$JOBID is a single shared filesystem.
+echo "== seeding BeeOND workspace from ~/scratch =="
+mkdir -p "$STRIPED"/{workdir,hf_cache,logs}
+rsync -a --delete \
+    --exclude='outputs/' --exclude='.git/' --exclude='__pycache__/' \
+    "$CODE_ROOT/" "$STRIPED/workdir/code/"
+mkdir -p "$STRIPED/workdir/outputs"
+# Mirror the durable outputs dir so jobs can append without losing prior work
+rsync -a "$SCRATCH_ROOT/outputs/" "$STRIPED/workdir/outputs/" || true
 
-SYNC_PID=0  # daemons live in tmux, not as children of this script
+echo "== BeeOND workspace layout =="
+ls -la "$STRIPED"
+du -sh "$STRIPED"/* 2>/dev/null
 
-# Record allocated node list in a predictable file for SSH aliases
+# Bootstrap env on every node (sets HF_HOME, venv path, etc.)
+echo "== bootstrapping env on all nodes via srun =="
+srun --ntasks=$SLURM_JOB_NUM_NODES --ntasks-per-node=1 --label \
+    env TW_STRIPED="$STRIPED" bash "$CODE_ROOT/scripts/zaratan/bootstrap_node.sh"
+
+# Start sync daemon on batch host (rank-0). Since BeeOND is shared across
+# nodes, ONE daemon is enough — it sees all writes from all nodes.
+echo "== starting single sync daemon (BeeOND is shared, no per-node needed) =="
+tmux kill-session -t sync 2>/dev/null || true
+tmux new-session -d -s sync "
+    env TW_STRIPED='$STRIPED' bash $CODE_ROOT/scripts/zaratan/sync_out.sh 2>&1 \
+      | tee $LOG_DIR/sync-$SLURM_JOB_ID.log
+"
+echo "== sync daemon tmux session started: $(tmux ls 2>&1 | head -3)"
+
+# Record allocated node list for SSH aliases
 scontrol show hostnames $SLURM_NODELIST > "$LOG_DIR/nodes-$SLURM_JOB_ID.txt"
-echo "== nodes file: $LOG_DIR/nodes-$SLURM_JOB_ID.txt"
+echo "== allocated nodes =="
 cat "$LOG_DIR/nodes-$SLURM_JOB_ID.txt"
 
 trap '
-    echo "== $(date) == cleanup: final sync on all nodes + daemon kill"
-    srun --ntasks=$SLURM_JOB_NUM_NODES --ntasks-per-node=1 --label bash -c "
-        tmux kill-session -t sync 2>/dev/null || true
-        bash '"$CODE_ROOT"'/scripts/zaratan/sync_out.sh --once 2>&1 | tail -3 || true
-    " 2>&1 | tail -10
+    echo "== $(date) == cleanup: final sync from BeeOND to ~/scratch"
+    tmux kill-session -t sync 2>/dev/null || true
+    env TW_STRIPED="'"$STRIPED"'" bash "$CODE_ROOT/scripts/zaratan/sync_out.sh" --once 2>&1 | tail -5 || true
+    echo "== BeeOND will be auto-torn-down by scheduler =="
 ' EXIT TERM INT
 
-# Idle loop: 23h heartbeat. User ssh-es into either allocated node to work.
-echo "== entering idle loop (23h) =="
+echo "== entering idle loop (23h). ssh into allocated nodes to work. =="
+echo "== workspace: $STRIPED/workdir/"
 touch "$LOG_DIR/heartbeat-$SLURM_JOB_ID"
 while sleep 600; do
     date >> "$LOG_DIR/heartbeat-$SLURM_JOB_ID"

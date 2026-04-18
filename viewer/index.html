@@ -157,7 +157,7 @@
         // ─── Scene picker ──────────────────────────────────────────────
         async function populateScenes() {
             try {
-                const res = await fetch('./scenes.json');
+                const res = await fetch('./scenes.json?t=' + Date.now(), { cache: 'no-store' });
                 const scenes = await res.json();
                 for (const s of scenes) {
                     const opt = document.createElement('option');

@@ -91,11 +91,16 @@ for p in sorted(splat_dir.glob("*.ply")):
     else:
         pretty = scene_id.replace("_", " ").strip()
         seed = None
+    name = pretty[:60] + (f" (seed {seed})" if seed is not None else "")
+    url = f"../splats/{p.name}"
     scenes.append({
         "id": stem,
-        "title": pretty[:60] + (f" (seed {seed})" if seed is not None else ""),
+        "name": name,
+        "url": url,
         "pipeline": pipeline,
-        "splat": f"../splats/{p.name}",
+        # keep legacy aliases so older viewers still work
+        "title": name,
+        "splat": url,
     })
 (www / "viewer" / "scenes.json").write_text(json.dumps(scenes, indent=2))
 print(f"wrote {len(scenes)} scenes to viewer/scenes.json")

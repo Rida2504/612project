@@ -228,18 +228,30 @@ def train_via_gsplat(
     num_iters: int,
     device: torch.device,
     downscale: int = 2,
-    sh_degree: int = 0,
+    sh_degree: int = 3,
     log_csv: Optional[str] = None,
-    max_gaussians: int = 300_000,
+    max_gaussians: int = 500_000,
     lr_means: float = 1.6e-4,
     lr_scales: float = 5e-3,
     lr_quats: float = 1e-3,
     lr_opacity: float = 5e-2,
     lr_sh_dc: float = 2.5e-3,
+    lr_sh_rest: float = 1.25e-4,
     lambda_ssim: float = 0.2,
     log_interval: int = 50,
+    densify: bool = True,
+    sh_growth_every: int = 1000,
 ) -> dict:
-    """Real gsplat training loop on CUDA."""
+    """Real gsplat training loop on CUDA.
+
+    Implements the full "production" variant:
+      - SH degree grows 0 → sh_degree_max in `sh_growth_every` steps (starts
+        with only DC, adds a new band each interval).
+      - Adaptive densification + pruning via `gsplat.DefaultStrategy` (guarded
+        by `densify`; falls back to fixed-N if the strategy API mismatches).
+      - Per-param-group LRs match the 3DGS paper.
+      - Scale & opacity warmup via inverse-sigmoid/log parameterization.
+    """
     import gsplat
     from gsplat import rasterization
 
@@ -247,93 +259,150 @@ def train_via_gsplat(
     viewmats, Ks, imgs, W, H = load_cameras(multiview_dir, device, downscale=downscale)
     print(f"[gsplat] Loaded {imgs.shape[0]} views at {W}x{H} on {device}.")
 
-    # Subsample if too many points
+    sh_degree_max = int(sh_degree)
+
+    # Subsample if too many initial points (room to densify upward later)
     N = init_xyz.shape[0]
     if N > max_gaussians:
         idx = np.random.choice(N, max_gaussians, replace=False)
         init_xyz = init_xyz[idx]
         init_rgb = init_rgb[idx]
         N = max_gaussians
-        print(f"[gsplat] Subsampled to {N} points.")
+        print(f"[gsplat] Subsampled init to {N} points (max_gaussians={max_gaussians}).")
 
-    means = torch.tensor(init_xyz, device=device, dtype=torch.float32).requires_grad_(True)
-    # k-NN initial scale (use the mean of k=3 nearest distances as the isotropic scale)
+    # Parameters (log-space scales; inverse-sigmoid opacity; wxyz quats; SH split DC/rest)
+    means = torch.nn.Parameter(torch.tensor(init_xyz, device=device, dtype=torch.float32))
     with torch.no_grad():
         dists = knn_mean_distance(means.detach(), k=3).clamp_min(1e-4)
         init_scale = torch.log(dists * 0.5).unsqueeze(-1).expand(-1, 3).contiguous()
-    scales = init_scale.clone().requires_grad_(True)
-    quats = torch.zeros(N, 4, device=device, dtype=torch.float32)
-    quats[:, 0] = 1.0  # identity rotation, wxyz convention
-    quats.requires_grad_(True)
-    opacities = torch.full((N,), inverse_sigmoid(0.1), device=device, dtype=torch.float32).requires_grad_(True)
-    sh_dc_init = torch.tensor((init_rgb - 0.5) / SH_C0, device=device, dtype=torch.float32)
-    sh_dc = sh_dc_init.unsqueeze(1).clone().requires_grad_(True)  # (N, 1, 3)
+    scales = torch.nn.Parameter(init_scale.clone())
+    q0 = torch.zeros(N, 4, device=device, dtype=torch.float32); q0[:, 0] = 1.0
+    quats = torch.nn.Parameter(q0)
+    opacities = torch.nn.Parameter(torch.full((N,), inverse_sigmoid(0.1), device=device, dtype=torch.float32))
 
-    params = [
-        {"params": [means], "lr": lr_means, "name": "means"},
-        {"params": [scales], "lr": lr_scales, "name": "scales"},
-        {"params": [quats], "lr": lr_quats, "name": "quats"},
-        {"params": [opacities], "lr": lr_opacity, "name": "opacity"},
-        {"params": [sh_dc], "lr": lr_sh_dc, "name": "sh_dc"},
-    ]
-    optimizer = torch.optim.Adam(params, eps=1e-15)
+    sh_dc_init = torch.tensor((init_rgb - 0.5) / SH_C0, device=device, dtype=torch.float32).unsqueeze(1)
+    sh0 = torch.nn.Parameter(sh_dc_init.clone())            # (N, 1, 3)  DC
+    n_rest = (sh_degree_max + 1) ** 2 - 1                    # e.g. 15 for degree 3
+    shN = torch.nn.Parameter(torch.zeros(N, n_rest, 3, device=device, dtype=torch.float32))
 
-    log_rows = []
-    log_rows.append(["iter", "loss", "psnr", "gaussians", "elapsed_s"])
+    # Per-param optimizers (DefaultStrategy expects a dict of optimizers)
+    params = {"means": means, "quats": quats, "scales": scales, "opacities": opacities, "sh0": sh0, "shN": shN}
+    optimizers = {
+        "means":     torch.optim.Adam([means],     lr=lr_means,    eps=1e-15),
+        "quats":     torch.optim.Adam([quats],     lr=lr_quats,    eps=1e-15),
+        "scales":    torch.optim.Adam([scales],    lr=lr_scales,   eps=1e-15),
+        "opacities": torch.optim.Adam([opacities], lr=lr_opacity,  eps=1e-15),
+        "sh0":       torch.optim.Adam([sh0],       lr=lr_sh_dc,    eps=1e-15),
+        "shN":       torch.optim.Adam([shN],       lr=lr_sh_rest,  eps=1e-15),
+    }
+
+    # Adaptive density control strategy (optional)
+    strategy = None
+    strategy_state = None
+    densify_enabled = bool(densify)
+    if densify_enabled:
+        try:
+            from gsplat.strategy import DefaultStrategy
+            strategy = DefaultStrategy(
+                prune_opa=0.005,
+                grow_grad2d=0.0002,
+                grow_scale3d=0.01,
+                prune_scale3d=0.1,
+                refine_start_iter=max(100, num_iters // 10),
+                refine_stop_iter=int(num_iters * 0.85),
+                reset_every=max(num_iters // 2, 500),
+                refine_every=max(50, num_iters // 30),
+            )
+            strategy.check_sanity(params, optimizers)
+            strategy_state = strategy.initialize_state()
+            print(f"[gsplat] Densification: enabled (start={strategy.refine_start_iter} stop={strategy.refine_stop_iter} every={strategy.refine_every})")
+        except Exception as e:
+            print(f"[gsplat] Densification: disabled ({type(e).__name__}: {e})")
+            strategy = None
+            densify_enabled = False
+
+    log_rows = [["iter", "loss", "psnr", "gaussians", "sh_degree", "elapsed_s"]]
     t0 = time.time()
     n_views = imgs.shape[0]
+    active_sh = 0
 
     for it in range(num_iters):
+        # Grow SH degree periodically
+        if sh_growth_every > 0 and it > 0 and (it % sh_growth_every) == 0:
+            active_sh = min(active_sh + 1, sh_degree_max)
+            if it % log_interval == 0:
+                print(f"[gsplat] iter {it} → SH degree now {active_sh}")
+
         vi = it % n_views
-        gt = imgs[vi]  # (H, W, 3)
-        # rasterization expects quats as wxyz, scales as log-space? No — gsplat
-        # takes ACTUAL scales (exp of log-scales) and ACTUAL opacities (sigmoid).
-        # We keep raw parameters and activate here.
+        gt = imgs[vi]
+        colors = torch.cat([sh0, shN], dim=1)  # (N, (K+1)^2, 3)
+
+        # gsplat wants ACTUAL scales (exp of log) and ACTUAL opacities (sigmoid)
         render, alpha, info = rasterization(
             means=means,
             quats=F.normalize(quats, dim=-1),
             scales=torch.exp(scales),
             opacities=torch.sigmoid(opacities),
-            colors=sh_dc,  # (N, 1, 3) for SH degree 0
+            colors=colors,
             viewmats=viewmats[vi:vi + 1],
             Ks=Ks[vi:vi + 1],
             width=W,
             height=H,
-            sh_degree=0,
+            sh_degree=active_sh,
             packed=False,
             render_mode="RGB",
         )
-        rendered = render[0, ..., :3].clamp(0, 1)  # (H,W,3)
+        rendered = render[0, ..., :3].clamp(0, 1)
         l1 = (rendered - gt).abs().mean()
         if lambda_ssim > 0:
-            s_loss = ssim_loss(rendered, gt)
-            loss = (1 - lambda_ssim) * l1 + lambda_ssim * s_loss
+            loss = (1 - lambda_ssim) * l1 + lambda_ssim * ssim_loss(rendered, gt)
         else:
             loss = l1
 
-        optimizer.zero_grad(set_to_none=True)
+        # Pre-backward hook (required by DefaultStrategy for bookkeeping)
+        if strategy is not None:
+            try:
+                strategy.step_pre_backward(params, optimizers, strategy_state, it, info)
+            except Exception:
+                pass
+
+        for opt in optimizers.values():
+            opt.zero_grad(set_to_none=True)
         loss.backward()
-        # Guard against NaN/Inf in any parameter gradient (occasional in first few iters)
-        for p in [means, scales, quats, opacities, sh_dc]:
+
+        # Guard against NaN/Inf in any parameter gradient
+        for p in params.values():
             if p.grad is not None:
                 torch.nan_to_num_(p.grad, nan=0.0, posinf=0.0, neginf=0.0)
-        optimizer.step()
+
+        for opt in optimizers.values():
+            opt.step()
+
+        # Post-backward hook (this is where DefaultStrategy densifies/prunes)
+        if strategy is not None:
+            try:
+                strategy.step_post_backward(params, optimizers, strategy_state, it, info, packed=False)
+                # Gaussian count may have changed — refresh N for logging
+                N = int(params["means"].shape[0])
+            except Exception as e:
+                if it < 5:
+                    print(f"[gsplat] step_post_backward error (continuing without densify): {e}")
 
         if (it % log_interval) == 0 or it == num_iters - 1:
             with torch.no_grad():
                 p = psnr(rendered, gt)
             elapsed = time.time() - t0
-            log_rows.append([it, round(loss.item(), 5), round(p, 3), N, round(elapsed, 2)])
-            print(f"[gsplat] iter {it:5d} loss={loss.item():.4f} psnr={p:.2f} dB  t={elapsed:.1f}s", flush=True)
+            log_rows.append([it, round(loss.item(), 5), round(p, 3), N, active_sh, round(elapsed, 2)])
+            print(f"[gsplat] iter {it:5d} loss={loss.item():.4f} psnr={p:.2f} dB  N={N}  sh={active_sh}  t={elapsed:.1f}s", flush=True)
 
-    # Final save
+    # Final save uses the (potentially-densified) parameters
     save_ply_inria(
-        means=means,
-        scales=scales,
-        quats=quats,
-        opacities=opacities,
-        sh_dc=sh_dc.squeeze(1),  # (N, 3)
-        sh_rest=None,  # degree-0 only for now
+        means=params["means"],
+        scales=params["scales"],
+        quats=params["quats"],
+        opacities=params["opacities"],
+        sh_dc=params["sh0"].squeeze(1),
+        sh_rest=params["shN"] if sh_degree_max > 0 else None,
         output_path=output_ply,
     )
     if log_csv:

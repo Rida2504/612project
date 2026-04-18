@@ -248,6 +248,14 @@ def main():
                         help="Run evaluation metrics after pipeline")
     parser.add_argument("--viewer", action="store_true",
                         help="Open web viewer after pipeline")
+    parser.add_argument("--device", type=str, default=None, choices=[None, "cuda", "mps", "cpu"],
+                        help="Override config device for all stages (cluster: 'cuda').")
+    parser.add_argument("--output-dir", type=str, default=None,
+                        help="Override config output_dir (e.g., BeeOND workdir).")
+    parser.add_argument("--iters", type=int, default=None,
+                        help="Override gaussian_splatting.num_iters.")
+    parser.add_argument("--max-gaussians", type=int, default=None,
+                        help="Override gaussian_splatting.max_gaussians.")
     args = parser.parse_args()
 
     # --legacy overrides --use-depth-init
@@ -260,6 +268,17 @@ def main():
         config_path = Path(__file__).parent / args.config
     with open(config_path) as f:
         config = yaml.safe_load(f)
+
+    # Apply CLI overrides
+    if args.device:
+        config.setdefault("panorama", {})["device"] = args.device
+        config.setdefault("depth", {})["device"] = args.device
+    if args.output_dir:
+        config["output_dir"] = args.output_dir
+    if args.iters is not None:
+        config.setdefault("gaussian_splatting", {})["num_iters"] = args.iters
+    if args.max_gaussians is not None:
+        config.setdefault("gaussian_splatting", {})["max_gaussians"] = args.max_gaussians
 
     t_start = time.time()
     panorama_path = args.panorama

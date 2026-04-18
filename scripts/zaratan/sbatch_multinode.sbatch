@@ -58,12 +58,18 @@ else
     echo "WORKSPACE_PER_NODE_TMP=/tmp/$USER/textworld-vr" > "$LOG_DIR/workspace-$SLURM_JOB_ID.env"
 fi
 
-# Start the background sync daemon (rsync /tmp → ~/scratch every 60s)
-echo "== starting sync daemon on batch host ($(hostname)) =="
-bash "$CODE_ROOT/scripts/zaratan/sync_out.sh" \
-    > "$LOG_DIR/sync-$SLURM_JOB_ID.log" 2>&1 &
-SYNC_PID=$!
-echo "== sync daemon PID=$SYNC_PID"
+# Start the background sync daemon on EVERY allocated node via tmux, so each
+# node's /tmp gets rsync'd to ~/scratch independently. tmux ensures the daemon
+# survives ssh session lifecycle changes. Backgrounded w/ srun so this doesn't
+# block the main sbatch.
+echo "== starting sync daemon on all nodes via srun+tmux =="
+srun --ntasks=$SLURM_JOB_NUM_NODES --ntasks-per-node=1 --label bash -c '
+    tmux kill-session -t sync 2>/dev/null || true
+    tmux new-session -d -s sync "bash '"$CODE_ROOT"'/scripts/zaratan/sync_out.sh 2>&1 | tee '"$LOG_DIR"'/sync-$(hostname)-'"$SLURM_JOB_ID"'.log"
+    echo "sync started on $(hostname): $(tmux ls)"
+' 2>&1 | tee -a "$LOG_DIR/sync-startup-$SLURM_JOB_ID.log"
+
+SYNC_PID=0  # daemons live in tmux, not as children of this script
 
 # Record allocated node list in a predictable file for SSH aliases
 scontrol show hostnames $SLURM_NODELIST > "$LOG_DIR/nodes-$SLURM_JOB_ID.txt"
@@ -71,9 +77,11 @@ echo "== nodes file: $LOG_DIR/nodes-$SLURM_JOB_ID.txt"
 cat "$LOG_DIR/nodes-$SLURM_JOB_ID.txt"
 
 trap '
-    echo "== $(date) == cleanup: final sync + daemon kill"
-    kill $SYNC_PID 2>/dev/null || true
-    bash "$CODE_ROOT/scripts/zaratan/sync_out.sh" --once 2>&1 | tail -5 || true
+    echo "== $(date) == cleanup: final sync on all nodes + daemon kill"
+    srun --ntasks=$SLURM_JOB_NUM_NODES --ntasks-per-node=1 --label bash -c "
+        tmux kill-session -t sync 2>/dev/null || true
+        bash '"$CODE_ROOT"'/scripts/zaratan/sync_out.sh --once 2>&1 | tail -3 || true
+    " 2>&1 | tail -10
 ' EXIT TERM INT
 
 # Idle loop: 23h heartbeat. User ssh-es into either allocated node to work.

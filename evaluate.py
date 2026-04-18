@@ -28,6 +28,7 @@ import argparse
 import json
 import math
 from pathlib import Path
+from typing import Optional
 
 import cv2
 import numpy as np
@@ -78,6 +79,42 @@ def compute_ssim(img1: np.ndarray, img2: np.ndarray, window_size: int = 11) -> f
                ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
 
     return float(ssim_map.mean())
+
+
+# ─── LPIPS ────────────────────────────────────────────────────────────────────
+
+_LPIPS_MODEL_CACHE = {}
+
+
+def compute_lpips(img1: np.ndarray, img2: np.ndarray, net: str = "alex") -> float:
+    """
+    LPIPS (learned perceptual image patch similarity) — lower is better.
+    Requires `pip install lpips`. Returns -1.0 on import failure.
+
+    Inputs: HWC uint8 or float32[0,1]. Will be converted to NCHW float32[-1,1].
+    """
+    try:
+        import lpips as _lpips
+    except ImportError:
+        print("Warning: lpips not installed. Run: pip install lpips")
+        return -1.0
+
+    if net not in _LPIPS_MODEL_CACHE:
+        _LPIPS_MODEL_CACHE[net] = _lpips.LPIPS(net=net, verbose=False).eval()
+    model = _LPIPS_MODEL_CACHE[net]
+
+    def _prep(a: np.ndarray) -> torch.Tensor:
+        if a.dtype == np.uint8:
+            a = a.astype(np.float32) / 255.0
+        t = torch.from_numpy(a).float()
+        if t.ndim == 3:
+            t = t.permute(2, 0, 1).unsqueeze(0)  # NCHW
+        # LPIPS expects [-1, 1]
+        return t * 2.0 - 1.0
+
+    with torch.no_grad():
+        d = model(_prep(img1), _prep(img2))
+    return float(d.item())
 
 
 # ─── CLIP Score ───────────────────────────────────────────────────────────────
@@ -245,6 +282,148 @@ def evaluate_render_quality(
     return results
 
 
+# ─── Pipeline comparator ─────────────────────────────────────────────────────
+
+def _find_progress_render(splat_ply: str) -> Optional[str]:
+    """Locate the latest step_*.png under progress/{stem}/ for a given splat."""
+    from pathlib import Path
+    progress_dir = Path(splat_ply).parent / "progress" / Path(splat_ply).stem
+    if not progress_dir.exists():
+        return None
+    renders = sorted(progress_dir.glob("step_*.png"))
+    return str(renders[-1]) if renders else None
+
+
+def evaluate_scene(
+    pipeline: str,
+    scene: str,
+    panorama_path: Optional[str],
+    splat_ply: Optional[str],
+    prompt: Optional[str] = None,
+    device_str: str = "mps",
+    skip_clip: bool = False,
+    skip_lpips: bool = False,
+) -> dict:
+    """Collect all automated metrics for one (pipeline, scene) pair.
+
+    Args:
+        skip_clip: skip CLIP (useful in environments where the transformers /
+            TF stack crashes — e.g., macOS miniconda with protobuf conflict).
+        skip_lpips: skip LPIPS if its weights can't be downloaded.
+    """
+    row = {
+        "pipeline": pipeline,
+        "scene": scene,
+        "clip": None,
+        "psnr": None,
+        "ssim": None,
+        "lpips": None,
+        "gaussian_count": None,
+        "status": "ok",
+    }
+
+    # CLIP on panorama
+    if (not skip_clip) and prompt and panorama_path and Path(panorama_path).exists():
+        try:
+            row["clip"] = round(compute_clip_score(prompt, panorama_path), 4)
+        except Exception as e:
+            row["status"] = f"clip-error:{type(e).__name__}"
+    elif skip_clip:
+        row["status"] = "clip-skipped"
+
+    # PSNR/SSIM/LPIPS from progress render comparison
+    if splat_ply and Path(splat_ply).exists():
+        comparison_img = _find_progress_render(splat_ply)
+        if comparison_img:
+            img = cv2.imread(comparison_img)
+            if img is not None:
+                h, w = img.shape[:2]
+                half_w = w // 2
+                gt = cv2.cvtColor(img[:, :half_w], cv2.COLOR_BGR2RGB)
+                rendered = cv2.cvtColor(img[:, half_w:], cv2.COLOR_BGR2RGB)
+                try:
+                    row["psnr"] = round(compute_psnr(gt, rendered), 2)
+                    row["ssim"] = round(compute_ssim(gt, rendered), 4)
+                except Exception as e:
+                    row["status"] = f"psnr-error:{type(e).__name__}"
+                if not skip_lpips:
+                    try:
+                        row["lpips"] = round(compute_lpips(gt, rendered), 4)
+                    except Exception as e:
+                        row["status"] = f"lpips-error:{type(e).__name__}"
+
+        # Gaussian count from .ply
+        try:
+            from plyfile import PlyData
+            row["gaussian_count"] = int(len(PlyData.read(splat_ply)["vertex"]))
+        except Exception:
+            pass
+
+    return row
+
+
+def compare_pipelines(
+    pipeline_scene_triples: list,
+    out_csv: str,
+    device_str: str = "mps",
+    skip_clip: bool = False,
+    skip_lpips: bool = False,
+) -> list:
+    """
+    Run metric evaluation across multiple pipeline/scene entries, write CSV.
+
+    Args:
+        pipeline_scene_triples: list of dicts like
+            {"pipeline": "depth", "scene": "japanese_coffee_shop",
+             "prompt": "a cozy Japanese coffee shop",
+             "panorama": "outputs/panoramas/...png",
+             "splat": "outputs/splats/..._gsplat.ply"}
+        out_csv: output CSV path
+    """
+    import csv as _csv
+    rows = []
+    for tri in pipeline_scene_triples:
+        row = evaluate_scene(
+            tri["pipeline"], tri["scene"],
+            tri.get("panorama"), tri.get("splat"),
+            prompt=tri.get("prompt"), device_str=device_str,
+            skip_clip=skip_clip, skip_lpips=skip_lpips,
+        )
+        rows.append(row)
+        print(f"  {tri['pipeline']}/{tri['scene']}: "
+              f"clip={row['clip']} psnr={row['psnr']} ssim={row['ssim']} "
+              f"lpips={row['lpips']} gauss={row['gaussian_count']}")
+
+    Path(out_csv).parent.mkdir(parents=True, exist_ok=True)
+    with open(out_csv, "w", newline="") as f:
+        w = _csv.DictWriter(
+            f, fieldnames=["pipeline", "scene", "clip", "psnr", "ssim",
+                           "lpips", "gaussian_count", "status"],
+        )
+        w.writeheader()
+        w.writerows(rows)
+    print(f"\nResults saved: {out_csv}")
+    return rows
+
+
+def _sanity_triples() -> list:
+    """Default eval set for --sanity: uses the single baseline scene."""
+    base = Path(__file__).parent
+    pano = base / "outputs" / "panoramas" / "a_cozy_Japanese_coffee_shop_s42.png"
+    splat_v2 = base / "outputs" / "splats" / "a_cozy_Japanese_coffee_shop_s42_v2.ply"
+    prompt = "a cozy Japanese coffee shop"
+    triples = []
+    if pano.exists():
+        triples.append({
+            "pipeline": "legacy-v2",
+            "scene": "japanese_coffee_shop",
+            "prompt": prompt,
+            "panorama": str(pano),
+            "splat": str(splat_v2) if splat_v2.exists() else None,
+        })
+    return triples
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main():
@@ -267,6 +446,22 @@ def main():
     fid_parser = subparsers.add_parser("fid", help="Compute FID score")
     fid_parser.add_argument("generated_dir", type=str)
     fid_parser.add_argument("--reference-dir", type=str, required=True)
+
+    # Compare pipelines
+    cmp_parser = subparsers.add_parser(
+        "compare",
+        help="Compare multiple pipelines × scenes. Produces a CSV of metrics.",
+    )
+    cmp_parser.add_argument("--config", type=str, default=None,
+                            help="JSON file of [{pipeline, scene, prompt, panorama, splat}, ...]")
+    cmp_parser.add_argument("--out", type=str, default="outputs/eval_compare.csv")
+    cmp_parser.add_argument("--sanity", action="store_true",
+                            help="Run on the built-in single-scene baseline (smoke test)")
+    cmp_parser.add_argument("--skip-clip", action="store_true",
+                            help="Skip CLIP (use on envs where transformers/TF crashes)")
+    cmp_parser.add_argument("--skip-lpips", action="store_true",
+                            help="Skip LPIPS (use if weights can't download)")
+    cmp_parser.add_argument("--device", type=str, default="mps")
 
     # All metrics for a scene
     all_parser = subparsers.add_parser("all", help="Run all metrics for a scene")
@@ -296,6 +491,24 @@ def main():
     elif args.mode == "fid":
         fid = compute_fid(args.generated_dir, args.reference_dir)
         print(f"\nFID Score: {fid:.2f}")
+
+    elif args.mode == "compare":
+        if args.sanity:
+            triples = _sanity_triples()
+            if not triples:
+                # Still emit a header-only CSV so downstream tooling can load it
+                print("[compare] No sanity triples found (missing outputs); writing header-only CSV.")
+                triples = []
+        elif args.config:
+            with open(args.config) as f:
+                triples = json.load(f)
+        else:
+            print("ERROR: pass --sanity or --config")
+            return
+        compare_pipelines(
+            triples, args.out, device_str=args.device,
+            skip_clip=args.skip_clip, skip_lpips=args.skip_lpips,
+        )
 
     elif args.mode == "all":
         print("=" * 60)

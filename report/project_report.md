@@ -199,7 +199,7 @@ Full build: `scripts/zaratan/build_venv.sh` (main venv),
 ## 9. Deliverables
 
 - **Code:** git tree in this repo — see `git log` for full history
-- **Viewer:** `www/viewer/index.html` — 10-scene picker with WebXR mode (served on login via `python -m http.server 8765 --directory ~/scratch/phase4/textworld-vr/www`)
+- **Viewer:** `www/viewer/index.html` — 30-scene picker with WebXR mode (served on login via `python -m http.server 8765 --directory ~/scratch/phase4/textworld-vr/www`). Demo screenshot: [report/figures/demo_art_gallery_s43.png](figures/demo_art_gallery_s43.png) — a 1.08 M-Gaussian render at 120 fps.
 - **Report:** this file
 - **Plots:** [report/figures/metrics_overview.png](figures/metrics_overview.png), [report/figures/per_scene.png](figures/per_scene.png)
 - **Raw CSVs:** [report/data/pipeline_v1_clip.csv](data/pipeline_v1_clip.csv), [pipeline_v2_clip.csv](data/pipeline_v2_clip.csv), [pipeline_combined_clip.csv](data/pipeline_combined_clip.csv)

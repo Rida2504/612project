@@ -2,12 +2,12 @@
 Stage 3 (replacement): gsplat-based 3DGS training with depth-initialized Gaussians.
 
 Design:
-  - If `gsplat` (CUDA) is importable → uses gsplat's rasterization + densification.
-    Intended runtime: Zaratan A100. Fast, supports 300k-1M Gaussians in minutes.
-  - Else → falls back to the existing `train_3dgs_v2.GaussianModelV2` rasterizer
-    but initializes means from a depth-derived point cloud instead of random
-    frustum sampling. This preserves the architectural win of real parallax
-    from monocular depth even when running on Mac MPS/CPU.
+  - If `gsplat` (CUDA) is importable → REAL training loop on GPU with
+    gsplat's CUDA rasterization. Multi-thousand-iter Adam + L1 loss,
+    optional SSIM. Saves 3DGS .ply in INRIA format (mkkellogg-compatible).
+  - Else → falls back to the existing `train_3dgs_v2.GaussianModelV2`
+    as an init-only export (v2 renderer is not differentiable, so no
+    training is done there; see train_via_v2_fallback for rationale).
 
 Input:
   - multiview_dir: directory with per-view images + transforms.json
@@ -15,7 +15,8 @@ Input:
   - init_pointcloud_ply: .ply produced by stage2_multiview/pano_depth.py
 
 Output:
-  - A .ply in the same format as train_3dgs_v2 (compatible with the web viewer)
+  - A .ply in the standard INRIA 3DGS format (f_dc_*, f_rest_*, scale_*,
+    rot_*, opacity). Loads in mkkellogg/gaussian-splats-3d and SuperSplat.
   - A training log CSV (loss, PSNR each N iterations)
 """
 
@@ -26,23 +27,27 @@ os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
 import argparse
 import csv
+import json
 import math
+import struct
 import sys
 import time
 from pathlib import Path
 from typing import Optional, Tuple
 
-# Allow running as a script: add project root (parent dir of this file's parent) to sys.path
 _PROJ_ROOT = str(Path(__file__).resolve().parent.parent)
 if _PROJ_ROOT not in sys.path:
     sys.path.insert(0, _PROJ_ROOT)
 
 import numpy as np
 import torch
+import torch.nn.functional as F
+from PIL import Image
 from plyfile import PlyData
 
 
-# ─── Backend selection ───────────────────────────────────────────────────────
+SH_C0 = 0.28209479177387814
+
 
 def _gsplat_available() -> bool:
     try:
@@ -60,10 +65,7 @@ def _pick_device(device_str: str) -> torch.device:
     return torch.device("cpu")
 
 
-# ─── Point cloud I/O ─────────────────────────────────────────────────────────
-
 def load_pointcloud_ply(ply_path: str) -> Tuple[np.ndarray, np.ndarray]:
-    """Load XYZ + RGB from a simple point-cloud .ply (as produced by pano_depth.py)."""
     ply = PlyData.read(ply_path)
     v = ply["vertex"]
     xyz = np.stack([v["x"], v["y"], v["z"]], axis=-1).astype(np.float32)
@@ -74,7 +76,149 @@ def load_pointcloud_ply(ply_path: str) -> Tuple[np.ndarray, np.ndarray]:
     return xyz, rgb
 
 
-# ─── gsplat backend (Zaratan) ────────────────────────────────────────────────
+def knn_mean_distance(points: torch.Tensor, k: int = 3) -> torch.Tensor:
+    """k-nearest-neighbor mean distance per point, chunked to fit memory."""
+    N = points.shape[0]
+    out = torch.empty(N, device=points.device, dtype=points.dtype)
+    chunk = 4096
+    for i in range(0, N, chunk):
+        j = min(i + chunk, N)
+        # (chunk, N) pairwise dists
+        d = torch.cdist(points[i:j], points)
+        # kth+1 because the closest is self (dist 0)
+        knn = torch.topk(d, k=min(k + 1, N), largest=False).values[:, 1:]
+        out[i:j] = knn.mean(dim=-1)
+    return out
+
+
+def inverse_sigmoid(x: float) -> float:
+    return math.log(x / (1 - x))
+
+
+def load_cameras(multiview_dir: Path, device: torch.device, downscale: int = 1):
+    """Return (viewmats[N,4,4], Ks[N,3,3], images[N,C,H,W], width, height)."""
+    tj = json.loads((multiview_dir / "transforms.json").read_text())
+    fx = float(tj["fl_x"]) / downscale
+    fy = float(tj["fl_y"]) / downscale
+    cx = float(tj["cx"]) / downscale
+    cy = float(tj["cy"]) / downscale
+    W = int(tj["w"]) // downscale
+    H = int(tj["h"]) // downscale
+
+    viewmats_list, imgs_list = [], []
+    for frame in tj["frames"]:
+        # c2w 4x4 in NeRF/OpenGL convention (x-right, y-up, z-back)
+        c2w = torch.tensor(frame["transform_matrix"], dtype=torch.float32)
+        # Convert OpenGL -> OpenCV (y-down, z-forward) which gsplat expects:
+        # flip y and z axes in camera frame (i.e. negate rows 1 and 2 of the
+        # world-to-camera rotation, which is equivalent to negating columns 1
+        # and 2 of c2w rotation).
+        flip = torch.diag(torch.tensor([1.0, -1.0, -1.0, 1.0]))
+        c2w_cv = c2w @ flip
+        w2c = torch.linalg.inv(c2w_cv)
+        viewmats_list.append(w2c)
+
+        # Load image
+        img_path = multiview_dir / "images" / frame["file_path"] if "file_path" in frame \
+            else multiview_dir / "images" / f"view_{len(imgs_list):03d}.png"
+        # fallback: just iterate view_XXX.png if file_path missing
+        if not img_path.exists():
+            img_path = multiview_dir / "images" / f"view_{len(imgs_list):03d}.png"
+        img = Image.open(img_path).convert("RGB")
+        if downscale != 1:
+            img = img.resize((W, H), Image.LANCZOS)
+        arr = np.asarray(img, dtype=np.float32) / 255.0  # (H,W,3)
+        imgs_list.append(torch.from_numpy(arr))
+
+    viewmats = torch.stack(viewmats_list, dim=0).to(device)  # (N,4,4)
+    imgs = torch.stack(imgs_list, dim=0).to(device)  # (N,H,W,3)
+    K = torch.tensor([[fx, 0, cx], [0, fy, cy], [0, 0, 1]], dtype=torch.float32, device=device)
+    Ks = K.unsqueeze(0).expand(viewmats.shape[0], 3, 3).contiguous()
+    return viewmats, Ks, imgs, W, H
+
+
+def psnr(rendered: torch.Tensor, gt: torch.Tensor) -> float:
+    mse = ((rendered - gt) ** 2).mean().item()
+    if mse <= 0:
+        return 99.0
+    return 10.0 * math.log10(1.0 / mse)
+
+
+def ssim_loss(rendered: torch.Tensor, gt: torch.Tensor) -> torch.Tensor:
+    """Simple 11x11 Gaussian-window SSIM loss (= 1 - SSIM)."""
+    # rendered, gt: (H, W, 3) in [0,1]
+    x = rendered.permute(2, 0, 1).unsqueeze(0)  # (1,3,H,W)
+    y = gt.permute(2, 0, 1).unsqueeze(0)
+    win_size = 11
+    sigma = 1.5
+    coords = torch.arange(win_size, device=rendered.device, dtype=rendered.dtype) - win_size // 2
+    g = torch.exp(-(coords ** 2) / (2 * sigma ** 2))
+    g = g / g.sum()
+    win = (g[:, None] * g[None, :])[None, None, :, :].expand(3, 1, -1, -1)
+    mu_x = F.conv2d(x, win, padding=win_size // 2, groups=3)
+    mu_y = F.conv2d(y, win, padding=win_size // 2, groups=3)
+    mu_x_sq, mu_y_sq, mu_xy = mu_x ** 2, mu_y ** 2, mu_x * mu_y
+    sigma_x_sq = F.conv2d(x * x, win, padding=win_size // 2, groups=3) - mu_x_sq
+    sigma_y_sq = F.conv2d(y * y, win, padding=win_size // 2, groups=3) - mu_y_sq
+    sigma_xy = F.conv2d(x * y, win, padding=win_size // 2, groups=3) - mu_xy
+    C1, C2 = 0.01 ** 2, 0.03 ** 2
+    num = (2 * mu_xy + C1) * (2 * sigma_xy + C2)
+    den = (mu_x_sq + mu_y_sq + C1) * (sigma_x_sq + sigma_y_sq + C2)
+    return 1.0 - (num / den).mean()
+
+
+def save_ply_inria(
+    means: torch.Tensor,
+    scales: torch.Tensor,      # log scale (raw parameter)
+    quats: torch.Tensor,       # wxyz (will be normalized)
+    opacities: torch.Tensor,   # inverse_sigmoid (raw parameter)
+    sh_dc: torch.Tensor,       # (N, 3)
+    sh_rest: Optional[torch.Tensor],  # (N, K, 3) or None
+    output_path: str,
+):
+    """Save 3DGS .ply in INRIA format (f_dc_*, f_rest_*, scale_*, rot_*, opacity)."""
+    means = means.detach().cpu().numpy().astype(np.float32)
+    scales = scales.detach().cpu().numpy().astype(np.float32)
+    quats = F.normalize(quats, dim=-1).detach().cpu().numpy().astype(np.float32)
+    opacities = opacities.detach().cpu().numpy().astype(np.float32).reshape(-1)
+    sh_dc = sh_dc.detach().cpu().numpy().astype(np.float32)  # (N,3)
+    if sh_rest is not None:
+        sh_rest_np = sh_rest.detach().cpu().numpy().astype(np.float32)  # (N, K, 3)
+        n_rest = sh_rest_np.shape[1] * 3  # K * 3 channels
+    else:
+        sh_rest_np = None
+        n_rest = 0
+
+    n = means.shape[0]
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+
+    header = ["ply", "format binary_little_endian 1.0", f"element vertex {n}",
+              "property float x", "property float y", "property float z",
+              "property float nx", "property float ny", "property float nz",
+              "property float f_dc_0", "property float f_dc_1", "property float f_dc_2"]
+    for i in range(n_rest):
+        header.append(f"property float f_rest_{i}")
+    header += ["property float opacity",
+               "property float scale_0", "property float scale_1", "property float scale_2",
+               "property float rot_0", "property float rot_1", "property float rot_2", "property float rot_3",
+               "end_header"]
+    with open(output_path, "wb") as f:
+        f.write(("\n".join(header) + "\n").encode("ascii"))
+        zeros = np.zeros(3, dtype=np.float32)  # placeholder normals
+        for i in range(n):
+            f.write(struct.pack("<fff", *means[i]))
+            f.write(struct.pack("<fff", *zeros))  # nx ny nz
+            f.write(struct.pack("<fff", *sh_dc[i]))
+            if sh_rest_np is not None:
+                # INRIA convention: f_rest laid out as channel-major: K coefs for R, then K for G, then K for B
+                K = sh_rest_np.shape[1]
+                for c in range(3):
+                    for k in range(K):
+                        f.write(struct.pack("<f", sh_rest_np[i, k, c]))
+            f.write(struct.pack("<f", float(opacities[i])))
+            f.write(struct.pack("<fff", *scales[i]))
+            f.write(struct.pack("<ffff", *quats[i]))
+
 
 def train_via_gsplat(
     multiview_dir: str,
@@ -84,49 +228,130 @@ def train_via_gsplat(
     num_iters: int,
     device: torch.device,
     downscale: int = 2,
-    sh_degree: int = 1,
+    sh_degree: int = 0,
     log_csv: Optional[str] = None,
+    max_gaussians: int = 300_000,
+    lr_means: float = 1.6e-4,
+    lr_scales: float = 5e-3,
+    lr_quats: float = 1e-3,
+    lr_opacity: float = 5e-2,
+    lr_sh_dc: float = 2.5e-3,
+    lambda_ssim: float = 0.2,
+    log_interval: int = 50,
 ) -> dict:
-    """Real gsplat path. Runs only on CUDA."""
-    import gsplat  # type: ignore
-    from gsplat import rasterization  # noqa: F401 — we rely on it existing, not using yet
-    # NOTE: this is a minimal scaffold. The full gsplat training loop is ~200 LOC
-    # and is intended to run on Zaratan. Kept intentionally thin here: imports
-    # gsplat (proves env), initializes parameters, runs ONE optimization step
-    # as a smoke test, and saves the initial splat so downstream tools can load
-    # it. Full training loop should be copied from gsplat/examples/simple_trainer.py
-    # once on the cluster.
-    from stage3_3dgs.train_3dgs_v2 import GaussianModelV2, save_gaussian_ply_v2
+    """Real gsplat training loop on CUDA."""
+    import gsplat
+    from gsplat import rasterization
 
+    multiview_dir = Path(multiview_dir)
+    viewmats, Ks, imgs, W, H = load_cameras(multiview_dir, device, downscale=downscale)
+    print(f"[gsplat] Loaded {imgs.shape[0]} views at {W}x{H} on {device}.")
+
+    # Subsample if too many points
     N = init_xyz.shape[0]
-    model = GaussianModelV2(N, device, sh_degree=sh_degree)
-    model.means.data.copy_(torch.tensor(init_xyz, device=device))
-    # Color init: SH_C0 ≈ 0.282; color = SH_C0 * c + 0.5 → c = (color - 0.5) / SH_C0
-    SH_C0 = 0.28209479177387814
-    model.sh_coeffs.data[:, 0, :] = torch.tensor(
-        (init_rgb - 0.5) / SH_C0, device=device, dtype=torch.float32
-    )
-    # Reasonable opacity / scale
-    model.opacities.data.fill_(0.1)
-    model.scales.data.fill_(-3.0)
+    if N > max_gaussians:
+        idx = np.random.choice(N, max_gaussians, replace=False)
+        init_xyz = init_xyz[idx]
+        init_rgb = init_rgb[idx]
+        N = max_gaussians
+        print(f"[gsplat] Subsampled to {N} points.")
 
-    print(f"[gsplat] Initialized {N} Gaussians on {device}. Saving scaffold and exiting.")
-    print(f"[gsplat] For full training on Zaratan, copy gsplat/examples/simple_trainer.py")
-    print(f"[gsplat] and plug in our init from {Path(output_ply).stem}_init.ply")
-    save_gaussian_ply_v2(model, output_ply)
+    means = torch.tensor(init_xyz, device=device, dtype=torch.float32).requires_grad_(True)
+    # k-NN initial scale (use the mean of k=3 nearest distances as the isotropic scale)
+    with torch.no_grad():
+        dists = knn_mean_distance(means.detach(), k=3).clamp_min(1e-4)
+        init_scale = torch.log(dists * 0.5).unsqueeze(-1).expand(-1, 3).contiguous()
+    scales = init_scale.clone().requires_grad_(True)
+    quats = torch.zeros(N, 4, device=device, dtype=torch.float32)
+    quats[:, 0] = 1.0  # identity rotation, wxyz convention
+    quats.requires_grad_(True)
+    opacities = torch.full((N,), inverse_sigmoid(0.1), device=device, dtype=torch.float32).requires_grad_(True)
+    sh_dc_init = torch.tensor((init_rgb - 0.5) / SH_C0, device=device, dtype=torch.float32)
+    sh_dc = sh_dc_init.unsqueeze(1).clone().requires_grad_(True)  # (N, 1, 3)
+
+    params = [
+        {"params": [means], "lr": lr_means, "name": "means"},
+        {"params": [scales], "lr": lr_scales, "name": "scales"},
+        {"params": [quats], "lr": lr_quats, "name": "quats"},
+        {"params": [opacities], "lr": lr_opacity, "name": "opacity"},
+        {"params": [sh_dc], "lr": lr_sh_dc, "name": "sh_dc"},
+    ]
+    optimizer = torch.optim.Adam(params, eps=1e-15)
+
+    log_rows = []
+    log_rows.append(["iter", "loss", "psnr", "gaussians", "elapsed_s"])
+    t0 = time.time()
+    n_views = imgs.shape[0]
+
+    for it in range(num_iters):
+        vi = it % n_views
+        gt = imgs[vi]  # (H, W, 3)
+        # rasterization expects quats as wxyz, scales as log-space? No — gsplat
+        # takes ACTUAL scales (exp of log-scales) and ACTUAL opacities (sigmoid).
+        # We keep raw parameters and activate here.
+        render, alpha, info = rasterization(
+            means=means,
+            quats=F.normalize(quats, dim=-1),
+            scales=torch.exp(scales),
+            opacities=torch.sigmoid(opacities),
+            colors=sh_dc,  # (N, 1, 3) for SH degree 0
+            viewmats=viewmats[vi:vi + 1],
+            Ks=Ks[vi:vi + 1],
+            width=W,
+            height=H,
+            sh_degree=0,
+            packed=False,
+            render_mode="RGB",
+        )
+        rendered = render[0, ..., :3].clamp(0, 1)  # (H,W,3)
+        l1 = (rendered - gt).abs().mean()
+        if lambda_ssim > 0:
+            s_loss = ssim_loss(rendered, gt)
+            loss = (1 - lambda_ssim) * l1 + lambda_ssim * s_loss
+        else:
+            loss = l1
+
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        # Guard against NaN/Inf in any parameter gradient (occasional in first few iters)
+        for p in [means, scales, quats, opacities, sh_dc]:
+            if p.grad is not None:
+                torch.nan_to_num_(p.grad, nan=0.0, posinf=0.0, neginf=0.0)
+        optimizer.step()
+
+        if (it % log_interval) == 0 or it == num_iters - 1:
+            with torch.no_grad():
+                p = psnr(rendered, gt)
+            elapsed = time.time() - t0
+            log_rows.append([it, round(loss.item(), 5), round(p, 3), N, round(elapsed, 2)])
+            print(f"[gsplat] iter {it:5d} loss={loss.item():.4f} psnr={p:.2f} dB  t={elapsed:.1f}s", flush=True)
+
+    # Final save
+    save_ply_inria(
+        means=means,
+        scales=scales,
+        quats=quats,
+        opacities=opacities,
+        sh_dc=sh_dc.squeeze(1),  # (N, 3)
+        sh_rest=None,  # degree-0 only for now
+        output_path=output_ply,
+    )
     if log_csv:
-        with open(log_csv, "w") as f:
-            f.write("iter,loss,psnr,gaussians\n0,,,%d\n" % N)
+        with open(log_csv, "w", newline="") as f:
+            csv.writer(f).writerows(log_rows)
+
+    final = log_rows[-1]
     return {
-        "backend": "gsplat-scaffold",
+        "backend": "gsplat-cuda",
         "final_gaussians": N,
-        "iters": 0,
+        "iters": num_iters,
         "device": str(device),
-        "note": "gsplat imported but full training loop deferred to Zaratan",
+        "final_loss": final[1],
+        "final_psnr": final[2],
+        "training_time_s": final[4],
+        "output_ply": output_ply,
     }
 
-
-# ─── Mac fallback (uses existing train_3dgs_v2 rasterizer) ───────────────────
 
 def train_via_v2_fallback(
     multiview_dir: str,
@@ -141,22 +366,7 @@ def train_via_v2_fallback(
     max_gaussians: int = 100_000,
     log_csv: Optional[str] = None,
 ) -> dict:
-    """
-    Fallback path when gsplat is not available (Mac/CPU). This path initializes
-    a GaussianModelV2 from the depth-derived point cloud and saves it without
-    running a training loop.
-
-    Rationale: the upstream train_3dgs_v2.render_gaussians is non-differentiable
-    (its sort+composite path breaks gradients), so the correct fallback is to
-    use it only as a geometry → .ply *export* and run the actual optimization
-    on Zaratan with gsplat. This preserves the architectural win (depth-based
-    init for real parallax) without fighting the existing CPU renderer.
-
-    For quality training on Mac, invoke the legacy `train_3dgs_v2.train(...)`
-    with `--num-points` matching our point cloud size; it will re-initialize
-    random positions and train a parallax-less model — strictly weaker than
-    this depth-initialized splat evaluated on cluster.
-    """
+    """CPU/MPS fallback: init-only save (v2 renderer is non-differentiable)."""
     from stage3_3dgs.train_3dgs_v2 import GaussianModelV2, save_gaussian_ply_v2
 
     N = min(init_xyz.shape[0], max_gaussians)
@@ -167,16 +377,15 @@ def train_via_v2_fallback(
 
     model = GaussianModelV2(N, device, sh_degree=sh_degree)
     model.means.data.copy_(torch.tensor(init_xyz, device=device))
-    SH_C0 = 0.28209479177387814
     model.sh_coeffs.data[:, 0, :] = torch.tensor(
         (init_rgb - 0.5) / SH_C0, device=device, dtype=torch.float32
     )
     model.opacities.data.fill_(0.1)
     model.scales.data.fill_(-3.5)
 
-    t_start = time.time()
+    t0 = time.time()
     save_gaussian_ply_v2(model, output_ply)
-    elapsed = time.time() - t_start
+    elapsed = time.time() - t0
 
     if log_csv:
         with open(log_csv, "w", newline="") as f:
@@ -184,20 +393,16 @@ def train_via_v2_fallback(
             w.writerow(["iter", "loss", "psnr", "gaussians"])
             w.writerow([0, None, None, N])
 
-    print(f"[v2-fallback] Saved depth-initialized .ply with {N} Gaussians (no training loop; "
-          f"run on Zaratan with gsplat for real optimization).")
-
+    print(f"[v2-fallback] Saved depth-initialized .ply with {N} Gaussians (no training loop).")
     return {
         "backend": "v2-fallback-init-only",
         "final_gaussians": N,
         "iters": 0,
         "device": str(device),
         "training_time_s": round(elapsed, 2),
-        "note": "Init-only fallback; no CPU training because v2 renderer is non-differentiable.",
+        "note": "Init-only; run on Zaratan with gsplat for real optimization.",
     }
 
-
-# ─── Public API ──────────────────────────────────────────────────────────────
 
 def train_gsplat(
     multiview_dir: str,
@@ -206,33 +411,23 @@ def train_gsplat(
     num_iters: int = 500,
     device_str: str = "mps",
     downscale: int = 2,
-    sh_degree: int = 1,
-    max_gaussians: int = 100_000,
+    sh_degree: int = 0,
+    max_gaussians: int = 300_000,
     log_csv: Optional[str] = None,
     force_fallback: bool = False,
 ) -> dict:
-    """
-    Train 3DGS starting from a depth-initialized point cloud.
-
-    Args:
-        multiview_dir: per-view images + transforms.json
-        init_pointcloud_ply: .ply from stage2_multiview/pano_depth.py
-        output_ply: where to save the trained splats
-        force_fallback: if True, skip gsplat even if available
-    """
     device = _pick_device(device_str)
     xyz, rgb = load_pointcloud_ply(init_pointcloud_ply)
     print(f"[train_gsplat] Loaded {xyz.shape[0]} init points from {init_pointcloud_ply}")
-
     Path(output_ply).parent.mkdir(parents=True, exist_ok=True)
 
     if not force_fallback and _gsplat_available() and device.type == "cuda":
-        print("[train_gsplat] Using gsplat backend (CUDA).")
+        print("[train_gsplat] Using gsplat CUDA backend with real training loop.")
         return train_via_gsplat(
             multiview_dir, xyz, rgb, output_ply,
             num_iters=num_iters, device=device,
             downscale=downscale, sh_degree=sh_degree,
-            log_csv=log_csv,
+            log_csv=log_csv, max_gaussians=max_gaussians,
         )
     else:
         reason = "forced" if force_fallback else ("gsplat not importable" if not _gsplat_available()
@@ -242,25 +437,22 @@ def train_gsplat(
             multiview_dir, xyz, rgb, output_ply,
             num_iters=num_iters, device=device,
             downscale=downscale, sh_degree=sh_degree,
-            max_gaussians=max_gaussians, log_csv=log_csv,
+            max_gaussians=min(max_gaussians, 100_000), log_csv=log_csv,
         )
 
 
-# ─── CLI ─────────────────────────────────────────────────────────────────────
-
 def main():
-    parser = argparse.ArgumentParser(description="Train 3DGS with depth-initialized Gaussians")
-    parser.add_argument("multiview_dir", type=str, help="Dir with images/ + transforms.json")
-    parser.add_argument("init_pointcloud", type=str, help=".ply from pano_depth.py")
-    parser.add_argument("--output", type=str, required=True, help="Output .ply path")
-    parser.add_argument("--iters", type=int, default=500)
-    parser.add_argument("--device", type=str, default="mps", choices=["cuda", "mps", "cpu"])
+    parser = argparse.ArgumentParser(description="Train 3DGS with depth-initialized Gaussians (gsplat).")
+    parser.add_argument("multiview_dir", type=str)
+    parser.add_argument("init_pointcloud", type=str)
+    parser.add_argument("--output", type=str, required=True)
+    parser.add_argument("--iters", type=int, default=5000)
+    parser.add_argument("--device", type=str, default="cuda", choices=["cuda", "mps", "cpu"])
     parser.add_argument("--downscale", type=int, default=2)
-    parser.add_argument("--sh-degree", type=int, default=1, choices=[0, 1, 2, 3])
-    parser.add_argument("--max-gaussians", type=int, default=100_000)
+    parser.add_argument("--sh-degree", type=int, default=0, choices=[0, 1, 2, 3])
+    parser.add_argument("--max-gaussians", type=int, default=300_000)
     parser.add_argument("--log-csv", type=str, default=None)
-    parser.add_argument("--force-fallback", action="store_true",
-                        help="Skip gsplat even if available (use v2 rasterizer)")
+    parser.add_argument("--force-fallback", action="store_true")
     args = parser.parse_args()
 
     result = train_gsplat(

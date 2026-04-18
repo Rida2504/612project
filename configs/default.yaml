@@ -29,6 +29,11 @@ panorama:
   device: "mps"  # mps for M4 Mac, cuda for Zaratan A100/H100
   dtype: "float16"  # float16 for speed, float32 for quality on MPS if needed
 
+  # Seam-blend post-process (360Redmond LoRA produces a visible vertical seam;
+  # this linearly blends the wraparound edges to reduce it)
+  blend_seam: true
+  seam_blend_width: 64
+
 # Stage 2: Multi-View Extraction
 multiview:
   num_views: 8           # number of perspective views to extract

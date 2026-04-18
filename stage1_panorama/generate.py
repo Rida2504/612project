@@ -17,8 +17,22 @@ from typing import Optional
 
 import torch
 import yaml
-from diffusers import StableDiffusionXLPipeline, DiffusionPipeline, EulerAncestralDiscreteScheduler
 from PIL import Image
+
+# Heavy imports deferred to avoid import errors for callers that only need
+# blend_horizontal_seam (e.g., tests, notebooks without diffusers).
+try:
+    from diffusers import (
+        StableDiffusionXLPipeline,
+        DiffusionPipeline,
+        EulerAncestralDiscreteScheduler,
+    )
+    _HAS_DIFFUSERS = True
+except ImportError:
+    DiffusionPipeline = None  # type: ignore
+    StableDiffusionXLPipeline = None  # type: ignore
+    EulerAncestralDiscreteScheduler = None  # type: ignore
+    _HAS_DIFFUSERS = False
 
 
 def get_device(requested: str) -> torch.device:
@@ -92,6 +106,47 @@ def build_prompt(text: str, cfg: dict) -> str:
     return f"{prefix}{text}{suffix}"
 
 
+def blend_horizontal_seam(image: Image.Image, blend_width_px: int = 64) -> Image.Image:
+    """
+    Linearly blend the horizontal seam of an equirectangular panorama so
+    that the left edge smoothly wraps into the right edge. Mitigates the
+    visible seam artifact from SDXL+360Redmond LoRA panoramas.
+
+    Args:
+        image: PIL Image (RGB), any size.
+        blend_width_px: pixels on each side of the seam to blend.
+
+    Returns: PIL Image same size, seam-blended.
+    """
+    import numpy as _np
+    arr = _np.array(image.convert("RGB")).astype(_np.float32)
+    H, W, _ = arr.shape
+    bw = min(int(blend_width_px), W // 4)
+    if bw < 2:
+        return image
+
+    # Left strip near x=0 and right strip near x=W-bw. Wrap: they represent
+    # the same direction in the scene.
+    left = arr[:, :bw, :]             # (H, bw, 3) — just after seam
+    right = arr[:, W - bw:, :]        # (H, bw, 3) — just before seam
+
+    # Blend: where in the gradient, pixel = right * (1-w) + left * w for a
+    # smooth transition. We produce one blended strip of 2*bw pixels crossing
+    # the seam and overwrite the left bw + right bw columns with its halves.
+    merged = (left + right) * 0.5                               # mean texture
+    w_ramp = _np.linspace(0.0, 1.0, bw, dtype=_np.float32)[None, :, None]
+    # Right side of original → morph from right to merged
+    new_right = right * (1.0 - w_ramp) + merged * w_ramp
+    # Left side of original → morph from merged to left
+    new_left = merged * (1.0 - w_ramp) + left * w_ramp
+
+    out = arr.copy()
+    out[:, :bw, :] = new_left
+    out[:, W - bw:, :] = new_right
+    out = _np.clip(out, 0, 255).astype(_np.uint8)
+    return Image.fromarray(out, mode="RGB")
+
+
 def generate_panorama(
     pipe: DiffusionPipeline,
     prompt: str,
@@ -123,7 +178,12 @@ def generate_panorama(
     elapsed = time.time() - t0
     print(f"  Generated in {elapsed:.1f}s")
 
-    return result.images[0]
+    img = result.images[0]
+    if cfg.get("blend_seam", True):
+        bw = int(cfg.get("seam_blend_width", 64))
+        img = blend_horizontal_seam(img, bw)
+        print(f"  Applied horizontal seam blend (width={bw}px)")
+    return img
 
 
 def main():

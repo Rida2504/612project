@@ -119,27 +119,46 @@ def compute_lpips(img1: np.ndarray, img2: np.ndarray, net: str = "alex") -> floa
 
 # ─── CLIP Score ───────────────────────────────────────────────────────────────
 
+_OPEN_CLIP_CACHE = {}
+
+
+def _get_open_clip(device: str = "cpu"):
+    """Lazy-load open_clip ViT-B/32 (laion2b_s34b_b79k). Cached across calls."""
+    key = device
+    if key in _OPEN_CLIP_CACHE:
+        return _OPEN_CLIP_CACHE[key]
+    import open_clip
+    model, _, preprocess = open_clip.create_model_and_transforms(
+        "ViT-B-32", pretrained="laion2b_s34b_b79k"
+    )
+    model.eval().to(device)
+    tokenizer = open_clip.get_tokenizer("ViT-B-32")
+    _OPEN_CLIP_CACHE[key] = (model, preprocess, tokenizer)
+    return _OPEN_CLIP_CACHE[key]
+
+
 def compute_clip_score(text: str, image_path: str) -> float:
-    """Compute CLIP similarity between text and image."""
+    """Cosine similarity between CLIP text and image embeddings (range ~[-1, 1], typically 0.15-0.35)."""
     try:
-        from transformers import CLIPProcessor, CLIPModel
+        import open_clip  # noqa: F401
         from PIL import Image
     except ImportError:
-        print("Warning: transformers not installed. Install with: pip install transformers")
+        print("Warning: open_clip_torch not installed. Install with: pip install open_clip_torch")
         return -1.0
 
-    print("Loading CLIP model...")
-    model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-    processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model, preprocess, tokenizer = _get_open_clip(device)
 
     image = Image.open(image_path).convert("RGB")
-
-    inputs = processor(text=[text], images=image, return_tensors="pt", padding=True)
+    img_t = preprocess(image).unsqueeze(0).to(device)
+    txt_t = tokenizer([text]).to(device)
 
     with torch.no_grad():
-        outputs = model(**inputs)
-        logits = outputs.logits_per_image
-        score = logits.item() / 100.0  # normalize to ~[0, 1]
+        img_feat = model.encode_image(img_t)
+        txt_feat = model.encode_text(txt_t)
+        img_feat = img_feat / img_feat.norm(dim=-1, keepdim=True)
+        txt_feat = txt_feat / txt_feat.norm(dim=-1, keepdim=True)
+        score = (img_feat @ txt_feat.T).item()
 
     return float(score)
 

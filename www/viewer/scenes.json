@@ -1,0 +1,182 @@
+[
+  {
+    "id": "a_contemporary_art_gallery_with_white_walls_and_la_s42_gsplat",
+    "title": "a contemporary art gallery with white walls and la (seed 42)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_contemporary_art_gallery_with_white_walls_and_la_s42_gsplat.ply"
+  },
+  {
+    "id": "a_contemporary_art_gallery_with_white_walls_and_la_s43_gsplat",
+    "title": "a contemporary art gallery with white walls and la (seed 43)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_contemporary_art_gallery_with_white_walls_and_la_s43_gsplat.ply"
+  },
+  {
+    "id": "a_contemporary_art_gallery_with_white_walls_and_la_s44_gsplat",
+    "title": "a contemporary art gallery with white walls and la (seed 44)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_contemporary_art_gallery_with_white_walls_and_la_s44_gsplat.ply"
+  },
+  {
+    "id": "a_cozy_Japanese_coffee_shop_with_warm_lighting_and_s42_gsplat",
+    "title": "a cozy Japanese coffee shop with warm lighting and (seed 42)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_cozy_Japanese_coffee_shop_with_warm_lighting_and_s42_gsplat.ply"
+  },
+  {
+    "id": "a_cozy_Japanese_coffee_shop_with_warm_lighting_and_s43_gsplat",
+    "title": "a cozy Japanese coffee shop with warm lighting and (seed 43)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_cozy_Japanese_coffee_shop_with_warm_lighting_and_s43_gsplat.ply"
+  },
+  {
+    "id": "a_cozy_Japanese_coffee_shop_with_warm_lighting_and_s44_gsplat",
+    "title": "a cozy Japanese coffee shop with warm lighting and (seed 44)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_cozy_Japanese_coffee_shop_with_warm_lighting_and_s44_gsplat.ply"
+  },
+  {
+    "id": "a_cyberpunk_noodle_bar_with_holographic_menus_and__s42_gsplat",
+    "title": "a cyberpunk noodle bar with holographic menus and (seed 42)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_cyberpunk_noodle_bar_with_holographic_menus_and__s42_gsplat.ply"
+  },
+  {
+    "id": "a_cyberpunk_noodle_bar_with_holographic_menus_and__s43_gsplat",
+    "title": "a cyberpunk noodle bar with holographic menus and (seed 43)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_cyberpunk_noodle_bar_with_holographic_menus_and__s43_gsplat.ply"
+  },
+  {
+    "id": "a_cyberpunk_noodle_bar_with_holographic_menus_and__s44_gsplat",
+    "title": "a cyberpunk noodle bar with holographic menus and (seed 44)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_cyberpunk_noodle_bar_with_holographic_menus_and__s44_gsplat.ply"
+  },
+  {
+    "id": "a_grand_hotel_lobby_with_marble_floors,_chandelier_s42_gsplat",
+    "title": "a grand hotel lobby with marble floors, chandelier (seed 42)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_grand_hotel_lobby_with_marble_floors,_chandelier_s42_gsplat.ply"
+  },
+  {
+    "id": "a_grand_hotel_lobby_with_marble_floors,_chandelier_s43_gsplat",
+    "title": "a grand hotel lobby with marble floors, chandelier (seed 43)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_grand_hotel_lobby_with_marble_floors,_chandelier_s43_gsplat.ply"
+  },
+  {
+    "id": "a_grand_hotel_lobby_with_marble_floors,_chandelier_s44_gsplat",
+    "title": "a grand hotel lobby with marble floors, chandelier (seed 44)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_grand_hotel_lobby_with_marble_floors,_chandelier_s44_gsplat.ply"
+  },
+  {
+    "id": "a_lush_greenhouse_conservatory_filled_with_tropica_s42_gsplat",
+    "title": "a lush greenhouse conservatory filled with tropica (seed 42)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_lush_greenhouse_conservatory_filled_with_tropica_s42_gsplat.ply"
+  },
+  {
+    "id": "a_lush_greenhouse_conservatory_filled_with_tropica_s43_gsplat",
+    "title": "a lush greenhouse conservatory filled with tropica (seed 43)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_lush_greenhouse_conservatory_filled_with_tropica_s43_gsplat.ply"
+  },
+  {
+    "id": "a_lush_greenhouse_conservatory_filled_with_tropica_s44_gsplat",
+    "title": "a lush greenhouse conservatory filled with tropica (seed 44)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_lush_greenhouse_conservatory_filled_with_tropica_s44_gsplat.ply"
+  },
+  {
+    "id": "a_minimalist_zen_spa_with_a_hot_spring_pool_and_ri_s42_gsplat",
+    "title": "a minimalist zen spa with a hot spring pool and ri (seed 42)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_minimalist_zen_spa_with_a_hot_spring_pool_and_ri_s42_gsplat.ply"
+  },
+  {
+    "id": "a_minimalist_zen_spa_with_a_hot_spring_pool_and_ri_s43_gsplat",
+    "title": "a minimalist zen spa with a hot spring pool and ri (seed 43)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_minimalist_zen_spa_with_a_hot_spring_pool_and_ri_s43_gsplat.ply"
+  },
+  {
+    "id": "a_minimalist_zen_spa_with_a_hot_spring_pool_and_ri_s44_gsplat",
+    "title": "a minimalist zen spa with a hot spring pool and ri (seed 44)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_minimalist_zen_spa_with_a_hot_spring_pool_and_ri_s44_gsplat.ply"
+  },
+  {
+    "id": "a_neon-lit_gaming_room_with_RGB_PC_setups_and_espo_s42_gsplat",
+    "title": "a neon-lit gaming room with RGB PC setups and espo (seed 42)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_neon-lit_gaming_room_with_RGB_PC_setups_and_espo_s42_gsplat.ply"
+  },
+  {
+    "id": "a_neon-lit_gaming_room_with_RGB_PC_setups_and_espo_s43_gsplat",
+    "title": "a neon-lit gaming room with RGB PC setups and espo (seed 43)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_neon-lit_gaming_room_with_RGB_PC_setups_and_espo_s43_gsplat.ply"
+  },
+  {
+    "id": "a_neon-lit_gaming_room_with_RGB_PC_setups_and_espo_s44_gsplat",
+    "title": "a neon-lit gaming room with RGB PC setups and espo (seed 44)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_neon-lit_gaming_room_with_RGB_PC_setups_and_espo_s44_gsplat.ply"
+  },
+  {
+    "id": "a_retrofuturistic_planetarium_lounge_with_velvet_s_s42_gsplat",
+    "title": "a retrofuturistic planetarium lounge with velvet s (seed 42)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_retrofuturistic_planetarium_lounge_with_velvet_s_s42_gsplat.ply"
+  },
+  {
+    "id": "a_retrofuturistic_planetarium_lounge_with_velvet_s_s43_gsplat",
+    "title": "a retrofuturistic planetarium lounge with velvet s (seed 43)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_retrofuturistic_planetarium_lounge_with_velvet_s_s43_gsplat.ply"
+  },
+  {
+    "id": "a_retrofuturistic_planetarium_lounge_with_velvet_s_s44_gsplat",
+    "title": "a retrofuturistic planetarium lounge with velvet s (seed 44)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_retrofuturistic_planetarium_lounge_with_velvet_s_s44_gsplat.ply"
+  },
+  {
+    "id": "a_sunlit_modernist_kitchen_with_marble_island_and__s42_gsplat",
+    "title": "a sunlit modernist kitchen with marble island and (seed 42)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_sunlit_modernist_kitchen_with_marble_island_and__s42_gsplat.ply"
+  },
+  {
+    "id": "a_sunlit_modernist_kitchen_with_marble_island_and__s43_gsplat",
+    "title": "a sunlit modernist kitchen with marble island and (seed 43)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_sunlit_modernist_kitchen_with_marble_island_and__s43_gsplat.ply"
+  },
+  {
+    "id": "a_sunlit_modernist_kitchen_with_marble_island_and__s44_gsplat",
+    "title": "a sunlit modernist kitchen with marble island and (seed 44)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_sunlit_modernist_kitchen_with_marble_island_and__s44_gsplat.ply"
+  },
+  {
+    "id": "a_vast_library_with_floor-to-ceiling_bookshelves_a_s42_gsplat",
+    "title": "a vast library with floor-to-ceiling bookshelves a (seed 42)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_vast_library_with_floor-to-ceiling_bookshelves_a_s42_gsplat.ply"
+  },
+  {
+    "id": "a_vast_library_with_floor-to-ceiling_bookshelves_a_s43_gsplat",
+    "title": "a vast library with floor-to-ceiling bookshelves a (seed 43)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_vast_library_with_floor-to-ceiling_bookshelves_a_s43_gsplat.ply"
+  },
+  {
+    "id": "a_vast_library_with_floor-to-ceiling_bookshelves_a_s44_gsplat",
+    "title": "a vast library with floor-to-ceiling bookshelves a (seed 44)",
+    "pipeline": "depth-gsplat",
+    "splat": "../splats/a_vast_library_with_floor-to-ceiling_bookshelves_a_s44_gsplat.ply"
+  }
+]

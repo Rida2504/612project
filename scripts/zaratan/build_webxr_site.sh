@@ -32,6 +32,9 @@ echo "   WWW=$WWW"
 
 mkdir -p "$WWW" "$VIEWER_DST" "$SPLATS_DST"
 
+# Clean stale splat symlinks/files from prior runs so scenes.json stays in sync with SPLATS_SRC
+find "$SPLATS_DST" -maxdepth 1 \( -type l -o -type f \) -name '*.ply' -delete 2>/dev/null || true
+
 # 1. Copy viewer
 if [ -d "$CODE_ROOT/viewer" ]; then
     cp -r "$CODE_ROOT/viewer"/* "$VIEWER_DST/"

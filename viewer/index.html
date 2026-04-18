@@ -132,9 +132,20 @@
             viewer.start();
         }
 
+        let loadInFlight = null;
+
         async function loadScene(url, friendlyName) {
-            if (!viewer) initViewer();
-            try {
+            // Serialize loads — don't start a new one while another is mid-flight.
+            if (loadInFlight) { try { await loadInFlight; } catch (_) {} }
+            loadInFlight = (async () => {
+                if (!viewer) initViewer();
+                // Remove any previously-added splat scenes so they don't accumulate.
+                // addSplatScene is additive; mkkellogg 0.4.7 exposes removeSplatScenes.
+                const sceneCount = viewer.getSceneCount?.() ?? 0;
+                if (sceneCount > 0) {
+                    const indices = [...Array(sceneCount).keys()];
+                    await viewer.removeSplatScenes(indices, false);
+                }
                 stScene.textContent = friendlyName || url;
                 stCount.textContent = 'loading…';
                 await viewer.addSplatScene(url, {
@@ -145,13 +156,12 @@
                     scale: [1, 1, 1],
                 });
                 currentSceneUrl = url;
-                // Splats count — peek at the internal store if available
                 const total = viewer.splatMesh?.getSplatCount?.() ?? 'unknown';
                 stCount.textContent = total;
-            } catch (e) {
-                console.error(e);
-                stCount.textContent = 'error: ' + e.message;
-            }
+            })();
+            try { await loadInFlight; }
+            catch (e) { console.error(e); stCount.textContent = 'error: ' + e.message; }
+            finally { loadInFlight = null; }
         }
 
         // ─── Scene picker ──────────────────────────────────────────────

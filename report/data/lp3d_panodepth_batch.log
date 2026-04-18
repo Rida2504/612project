@@ -1,0 +1,225 @@
+== [2026-04-18T14:53:38-04:00] lp3d panodepth batch starting on gpu-a6-8.zaratan.umd.edu
+== [2026-04-18T14:53:40-04:00] panodepth: a_contemporary_art_gallery_with_white_walls_and_la_s42
+2026-04-18 14:54:15,753 - utility.blending - DEBUG - stitch the tangent image 0
+2026-04-18 14:54:15,850 - utility.blending - DEBUG - stitch the tangent image 1
+2026-04-18 14:54:15,944 - utility.blending - DEBUG - stitch the tangent image 2
+2026-04-18 14:54:16,037 - utility.blending - DEBUG - stitch the tangent image 3
+2026-04-18 14:54:16,130 - utility.blending - DEBUG - stitch the tangent image 4
+2026-04-18 14:54:16,224 - utility.blending - DEBUG - stitch the tangent image 5
+2026-04-18 14:54:16,257 - utility.blending - DEBUG - stitch the tangent image 6
+2026-04-18 14:54:16,289 - utility.blending - DEBUG - stitch the tangent image 7
+2026-04-18 14:54:16,320 - utility.blending - DEBUG - stitch the tangent image 8
+2026-04-18 14:54:16,352 - utility.blending - DEBUG - stitch the tangent image 9
+2026-04-18 14:54:16,384 - utility.blending - DEBUG - stitch the tangent image 10
+2026-04-18 14:54:16,417 - utility.blending - DEBUG - stitch the tangent image 11
+2026-04-18 14:54:16,451 - utility.blending - DEBUG - stitch the tangent image 12
+2026-04-18 14:54:16,484 - utility.blending - DEBUG - stitch the tangent image 13
+2026-04-18 14:54:16,516 - utility.blending - DEBUG - stitch the tangent image 14
+2026-04-18 14:54:16,549 - utility.blending - DEBUG - stitch the tangent image 15
+2026-04-18 14:54:16,649 - utility.blending - DEBUG - stitch the tangent image 16
+2026-04-18 14:54:16,744 - utility.blending - DEBUG - stitch the tangent image 17
+2026-04-18 14:54:16,839 - utility.blending - DEBUG - stitch the tangent image 18
+2026-04-18 14:54:16,935 - utility.blending - DEBUG - stitch the tangent image 19
+ok: a_contemporary_art_gallery_with_white_walls_and_la_s42 (31457461 bytes)
+== [2026-04-18T14:54:27-04:00] panodepth: a_cozy_Japanese_coffee_shop_with_warm_lighting_and_s42
+2026-04-18 14:55:03,642 - utility.blending - DEBUG - stitch the tangent image 0
+2026-04-18 14:55:03,748 - utility.blending - DEBUG - stitch the tangent image 1
+2026-04-18 14:55:03,849 - utility.blending - DEBUG - stitch the tangent image 2
+2026-04-18 14:55:03,949 - utility.blending - DEBUG - stitch the tangent image 3
+2026-04-18 14:55:04,047 - utility.blending - DEBUG - stitch the tangent image 4
+2026-04-18 14:55:04,145 - utility.blending - DEBUG - stitch the tangent image 5
+2026-04-18 14:55:04,180 - utility.blending - DEBUG - stitch the tangent image 6
+2026-04-18 14:55:04,213 - utility.blending - DEBUG - stitch the tangent image 7
+2026-04-18 14:55:04,246 - utility.blending - DEBUG - stitch the tangent image 8
+2026-04-18 14:55:04,279 - utility.blending - DEBUG - stitch the tangent image 9
+2026-04-18 14:55:04,312 - utility.blending - DEBUG - stitch the tangent image 10
+2026-04-18 14:55:04,346 - utility.blending - DEBUG - stitch the tangent image 11
+2026-04-18 14:55:04,379 - utility.blending - DEBUG - stitch the tangent image 12
+2026-04-18 14:55:04,412 - utility.blending - DEBUG - stitch the tangent image 13
+2026-04-18 14:55:04,447 - utility.blending - DEBUG - stitch the tangent image 14
+2026-04-18 14:55:04,481 - utility.blending - DEBUG - stitch the tangent image 15
+2026-04-18 14:55:04,590 - utility.blending - DEBUG - stitch the tangent image 16
+2026-04-18 14:55:04,690 - utility.blending - DEBUG - stitch the tangent image 17
+2026-04-18 14:55:04,789 - utility.blending - DEBUG - stitch the tangent image 18
+2026-04-18 14:55:04,887 - utility.blending - DEBUG - stitch the tangent image 19
+ok: a_cozy_Japanese_coffee_shop_with_warm_lighting_and_s42 (31457461 bytes)
+== [2026-04-18T14:55:15-04:00] panodepth: a_cyberpunk_noodle_bar_with_holographic_menus_and__s42
+2026-04-18 14:55:50,432 - utility.blending - DEBUG - stitch the tangent image 0
+2026-04-18 14:55:50,535 - utility.blending - DEBUG - stitch the tangent image 1
+2026-04-18 14:55:50,635 - utility.blending - DEBUG - stitch the tangent image 2
+2026-04-18 14:55:50,735 - utility.blending - DEBUG - stitch the tangent image 3
+2026-04-18 14:55:50,831 - utility.blending - DEBUG - stitch the tangent image 4
+2026-04-18 14:55:50,927 - utility.blending - DEBUG - stitch the tangent image 5
+2026-04-18 14:55:50,961 - utility.blending - DEBUG - stitch the tangent image 6
+2026-04-18 14:55:50,994 - utility.blending - DEBUG - stitch the tangent image 7
+2026-04-18 14:55:51,026 - utility.blending - DEBUG - stitch the tangent image 8
+2026-04-18 14:55:51,059 - utility.blending - DEBUG - stitch the tangent image 9
+2026-04-18 14:55:51,092 - utility.blending - DEBUG - stitch the tangent image 10
+2026-04-18 14:55:51,125 - utility.blending - DEBUG - stitch the tangent image 11
+2026-04-18 14:55:51,159 - utility.blending - DEBUG - stitch the tangent image 12
+2026-04-18 14:55:51,193 - utility.blending - DEBUG - stitch the tangent image 13
+2026-04-18 14:55:51,226 - utility.blending - DEBUG - stitch the tangent image 14
+2026-04-18 14:55:51,260 - utility.blending - DEBUG - stitch the tangent image 15
+2026-04-18 14:55:51,362 - utility.blending - DEBUG - stitch the tangent image 16
+2026-04-18 14:55:51,460 - utility.blending - DEBUG - stitch the tangent image 17
+2026-04-18 14:55:51,557 - utility.blending - DEBUG - stitch the tangent image 18
+2026-04-18 14:55:51,657 - utility.blending - DEBUG - stitch the tangent image 19
+ok: a_cyberpunk_noodle_bar_with_holographic_menus_and__s42 (31457461 bytes)
+== [2026-04-18T14:56:02-04:00] panodepth: a_grand_hotel_lobby_with_marble_floors,_chandelier_s42
+2026-04-18 14:56:37,629 - utility.blending - DEBUG - stitch the tangent image 0
+2026-04-18 14:56:37,738 - utility.blending - DEBUG - stitch the tangent image 1
+2026-04-18 14:56:37,837 - utility.blending - DEBUG - stitch the tangent image 2
+2026-04-18 14:56:37,933 - utility.blending - DEBUG - stitch the tangent image 3
+2026-04-18 14:56:38,026 - utility.blending - DEBUG - stitch the tangent image 4
+2026-04-18 14:56:38,118 - utility.blending - DEBUG - stitch the tangent image 5
+2026-04-18 14:56:38,152 - utility.blending - DEBUG - stitch the tangent image 6
+2026-04-18 14:56:38,183 - utility.blending - DEBUG - stitch the tangent image 7
+2026-04-18 14:56:38,215 - utility.blending - DEBUG - stitch the tangent image 8
+2026-04-18 14:56:38,247 - utility.blending - DEBUG - stitch the tangent image 9
+2026-04-18 14:56:38,279 - utility.blending - DEBUG - stitch the tangent image 10
+2026-04-18 14:56:38,312 - utility.blending - DEBUG - stitch the tangent image 11
+2026-04-18 14:56:38,345 - utility.blending - DEBUG - stitch the tangent image 12
+2026-04-18 14:56:38,377 - utility.blending - DEBUG - stitch the tangent image 13
+2026-04-18 14:56:38,412 - utility.blending - DEBUG - stitch the tangent image 14
+2026-04-18 14:56:38,447 - utility.blending - DEBUG - stitch the tangent image 15
+2026-04-18 14:56:38,550 - utility.blending - DEBUG - stitch the tangent image 16
+2026-04-18 14:56:38,650 - utility.blending - DEBUG - stitch the tangent image 17
+2026-04-18 14:56:38,745 - utility.blending - DEBUG - stitch the tangent image 18
+2026-04-18 14:56:38,840 - utility.blending - DEBUG - stitch the tangent image 19
+ok: a_grand_hotel_lobby_with_marble_floors,_chandelier_s42 (31457461 bytes)
+== [2026-04-18T14:56:49-04:00] panodepth: a_lush_greenhouse_conservatory_filled_with_tropica_s42
+2026-04-18 14:57:25,021 - utility.blending - DEBUG - stitch the tangent image 0
+2026-04-18 14:57:25,127 - utility.blending - DEBUG - stitch the tangent image 1
+2026-04-18 14:57:25,223 - utility.blending - DEBUG - stitch the tangent image 2
+2026-04-18 14:57:25,319 - utility.blending - DEBUG - stitch the tangent image 3
+2026-04-18 14:57:25,413 - utility.blending - DEBUG - stitch the tangent image 4
+2026-04-18 14:57:25,505 - utility.blending - DEBUG - stitch the tangent image 5
+2026-04-18 14:57:25,537 - utility.blending - DEBUG - stitch the tangent image 6
+2026-04-18 14:57:25,568 - utility.blending - DEBUG - stitch the tangent image 7
+2026-04-18 14:57:25,599 - utility.blending - DEBUG - stitch the tangent image 8
+2026-04-18 14:57:25,630 - utility.blending - DEBUG - stitch the tangent image 9
+2026-04-18 14:57:25,662 - utility.blending - DEBUG - stitch the tangent image 10
+2026-04-18 14:57:25,694 - utility.blending - DEBUG - stitch the tangent image 11
+2026-04-18 14:57:25,730 - utility.blending - DEBUG - stitch the tangent image 12
+2026-04-18 14:57:25,762 - utility.blending - DEBUG - stitch the tangent image 13
+2026-04-18 14:57:25,796 - utility.blending - DEBUG - stitch the tangent image 14
+2026-04-18 14:57:25,829 - utility.blending - DEBUG - stitch the tangent image 15
+2026-04-18 14:57:25,932 - utility.blending - DEBUG - stitch the tangent image 16
+2026-04-18 14:57:26,026 - utility.blending - DEBUG - stitch the tangent image 17
+2026-04-18 14:57:26,120 - utility.blending - DEBUG - stitch the tangent image 18
+2026-04-18 14:57:26,217 - utility.blending - DEBUG - stitch the tangent image 19
+ok: a_lush_greenhouse_conservatory_filled_with_tropica_s42 (31457461 bytes)
+== [2026-04-18T14:57:36-04:00] panodepth: a_minimalist_zen_spa_with_a_hot_spring_pool_and_ri_s42
+2026-04-18 14:58:12,008 - utility.blending - DEBUG - stitch the tangent image 0
+2026-04-18 14:58:12,117 - utility.blending - DEBUG - stitch the tangent image 1
+2026-04-18 14:58:12,215 - utility.blending - DEBUG - stitch the tangent image 2
+2026-04-18 14:58:12,312 - utility.blending - DEBUG - stitch the tangent image 3
+2026-04-18 14:58:12,409 - utility.blending - DEBUG - stitch the tangent image 4
+2026-04-18 14:58:12,504 - utility.blending - DEBUG - stitch the tangent image 5
+2026-04-18 14:58:12,537 - utility.blending - DEBUG - stitch the tangent image 6
+2026-04-18 14:58:12,569 - utility.blending - DEBUG - stitch the tangent image 7
+2026-04-18 14:58:12,601 - utility.blending - DEBUG - stitch the tangent image 8
+2026-04-18 14:58:12,633 - utility.blending - DEBUG - stitch the tangent image 9
+2026-04-18 14:58:12,665 - utility.blending - DEBUG - stitch the tangent image 10
+2026-04-18 14:58:12,697 - utility.blending - DEBUG - stitch the tangent image 11
+2026-04-18 14:58:12,730 - utility.blending - DEBUG - stitch the tangent image 12
+2026-04-18 14:58:12,764 - utility.blending - DEBUG - stitch the tangent image 13
+2026-04-18 14:58:12,799 - utility.blending - DEBUG - stitch the tangent image 14
+2026-04-18 14:58:12,833 - utility.blending - DEBUG - stitch the tangent image 15
+2026-04-18 14:58:12,937 - utility.blending - DEBUG - stitch the tangent image 16
+2026-04-18 14:58:13,035 - utility.blending - DEBUG - stitch the tangent image 17
+2026-04-18 14:58:13,131 - utility.blending - DEBUG - stitch the tangent image 18
+2026-04-18 14:58:13,227 - utility.blending - DEBUG - stitch the tangent image 19
+ok: a_minimalist_zen_spa_with_a_hot_spring_pool_and_ri_s42 (31457461 bytes)
+== [2026-04-18T14:58:24-04:00] panodepth: a_neon-lit_gaming_room_with_RGB_PC_setups_and_espo_s42
+2026-04-18 14:58:58,076 - utility.blending - DEBUG - stitch the tangent image 0
+2026-04-18 14:58:58,186 - utility.blending - DEBUG - stitch the tangent image 1
+2026-04-18 14:58:58,286 - utility.blending - DEBUG - stitch the tangent image 2
+2026-04-18 14:58:58,385 - utility.blending - DEBUG - stitch the tangent image 3
+2026-04-18 14:58:58,483 - utility.blending - DEBUG - stitch the tangent image 4
+2026-04-18 14:58:58,578 - utility.blending - DEBUG - stitch the tangent image 5
+2026-04-18 14:58:58,612 - utility.blending - DEBUG - stitch the tangent image 6
+2026-04-18 14:58:58,645 - utility.blending - DEBUG - stitch the tangent image 7
+2026-04-18 14:58:58,677 - utility.blending - DEBUG - stitch the tangent image 8
+2026-04-18 14:58:58,710 - utility.blending - DEBUG - stitch the tangent image 9
+2026-04-18 14:58:58,743 - utility.blending - DEBUG - stitch the tangent image 10
+2026-04-18 14:58:58,776 - utility.blending - DEBUG - stitch the tangent image 11
+2026-04-18 14:58:58,810 - utility.blending - DEBUG - stitch the tangent image 12
+2026-04-18 14:58:58,844 - utility.blending - DEBUG - stitch the tangent image 13
+2026-04-18 14:58:58,879 - utility.blending - DEBUG - stitch the tangent image 14
+2026-04-18 14:58:58,914 - utility.blending - DEBUG - stitch the tangent image 15
+2026-04-18 14:58:59,020 - utility.blending - DEBUG - stitch the tangent image 16
+2026-04-18 14:58:59,120 - utility.blending - DEBUG - stitch the tangent image 17
+2026-04-18 14:58:59,218 - utility.blending - DEBUG - stitch the tangent image 18
+2026-04-18 14:58:59,317 - utility.blending - DEBUG - stitch the tangent image 19
+ok: a_neon-lit_gaming_room_with_RGB_PC_setups_and_espo_s42 (31457461 bytes)
+== [2026-04-18T14:59:10-04:00] panodepth: a_retrofuturistic_planetarium_lounge_with_velvet_s_s42
+2026-04-18 14:59:44,901 - utility.blending - DEBUG - stitch the tangent image 0
+2026-04-18 14:59:45,004 - utility.blending - DEBUG - stitch the tangent image 1
+2026-04-18 14:59:45,101 - utility.blending - DEBUG - stitch the tangent image 2
+2026-04-18 14:59:45,197 - utility.blending - DEBUG - stitch the tangent image 3
+2026-04-18 14:59:45,293 - utility.blending - DEBUG - stitch the tangent image 4
+2026-04-18 14:59:45,390 - utility.blending - DEBUG - stitch the tangent image 5
+2026-04-18 14:59:45,424 - utility.blending - DEBUG - stitch the tangent image 6
+2026-04-18 14:59:45,457 - utility.blending - DEBUG - stitch the tangent image 7
+2026-04-18 14:59:45,489 - utility.blending - DEBUG - stitch the tangent image 8
+2026-04-18 14:59:45,522 - utility.blending - DEBUG - stitch the tangent image 9
+2026-04-18 14:59:45,555 - utility.blending - DEBUG - stitch the tangent image 10
+2026-04-18 14:59:45,588 - utility.blending - DEBUG - stitch the tangent image 11
+2026-04-18 14:59:45,621 - utility.blending - DEBUG - stitch the tangent image 12
+2026-04-18 14:59:45,654 - utility.blending - DEBUG - stitch the tangent image 13
+2026-04-18 14:59:45,688 - utility.blending - DEBUG - stitch the tangent image 14
+2026-04-18 14:59:45,722 - utility.blending - DEBUG - stitch the tangent image 15
+2026-04-18 14:59:45,823 - utility.blending - DEBUG - stitch the tangent image 16
+2026-04-18 14:59:45,928 - utility.blending - DEBUG - stitch the tangent image 17
+2026-04-18 14:59:46,026 - utility.blending - DEBUG - stitch the tangent image 18
+2026-04-18 14:59:46,123 - utility.blending - DEBUG - stitch the tangent image 19
+ok: a_retrofuturistic_planetarium_lounge_with_velvet_s_s42 (31457461 bytes)
+== [2026-04-18T14:59:57-04:00] panodepth: a_sunlit_modernist_kitchen_with_marble_island_and__s42
+2026-04-18 15:00:33,840 - utility.blending - DEBUG - stitch the tangent image 0
+2026-04-18 15:00:33,937 - utility.blending - DEBUG - stitch the tangent image 1
+2026-04-18 15:00:34,031 - utility.blending - DEBUG - stitch the tangent image 2
+2026-04-18 15:00:34,126 - utility.blending - DEBUG - stitch the tangent image 3
+2026-04-18 15:00:34,220 - utility.blending - DEBUG - stitch the tangent image 4
+2026-04-18 15:00:34,315 - utility.blending - DEBUG - stitch the tangent image 5
+2026-04-18 15:00:34,348 - utility.blending - DEBUG - stitch the tangent image 6
+2026-04-18 15:00:34,380 - utility.blending - DEBUG - stitch the tangent image 7
+2026-04-18 15:00:34,412 - utility.blending - DEBUG - stitch the tangent image 8
+2026-04-18 15:00:34,444 - utility.blending - DEBUG - stitch the tangent image 9
+2026-04-18 15:00:34,477 - utility.blending - DEBUG - stitch the tangent image 10
+2026-04-18 15:00:34,509 - utility.blending - DEBUG - stitch the tangent image 11
+2026-04-18 15:00:34,543 - utility.blending - DEBUG - stitch the tangent image 12
+2026-04-18 15:00:34,575 - utility.blending - DEBUG - stitch the tangent image 13
+2026-04-18 15:00:34,608 - utility.blending - DEBUG - stitch the tangent image 14
+2026-04-18 15:00:34,641 - utility.blending - DEBUG - stitch the tangent image 15
+2026-04-18 15:00:34,740 - utility.blending - DEBUG - stitch the tangent image 16
+2026-04-18 15:00:34,837 - utility.blending - DEBUG - stitch the tangent image 17
+2026-04-18 15:00:34,932 - utility.blending - DEBUG - stitch the tangent image 18
+2026-04-18 15:00:35,028 - utility.blending - DEBUG - stitch the tangent image 19
+ok: a_sunlit_modernist_kitchen_with_marble_island_and__s42 (31457461 bytes)
+== [2026-04-18T15:00:45-04:00] panodepth: a_vast_library_with_floor-to-ceiling_bookshelves_a_s42
+2026-04-18 15:01:20,820 - utility.blending - DEBUG - stitch the tangent image 0
+2026-04-18 15:01:20,928 - utility.blending - DEBUG - stitch the tangent image 1
+2026-04-18 15:01:21,027 - utility.blending - DEBUG - stitch the tangent image 2
+2026-04-18 15:01:21,126 - utility.blending - DEBUG - stitch the tangent image 3
+2026-04-18 15:01:21,225 - utility.blending - DEBUG - stitch the tangent image 4
+2026-04-18 15:01:21,321 - utility.blending - DEBUG - stitch the tangent image 5
+2026-04-18 15:01:21,355 - utility.blending - DEBUG - stitch the tangent image 6
+2026-04-18 15:01:21,386 - utility.blending - DEBUG - stitch the tangent image 7
+2026-04-18 15:01:21,418 - utility.blending - DEBUG - stitch the tangent image 8
+2026-04-18 15:01:21,450 - utility.blending - DEBUG - stitch the tangent image 9
+2026-04-18 15:01:21,482 - utility.blending - DEBUG - stitch the tangent image 10
+2026-04-18 15:01:21,514 - utility.blending - DEBUG - stitch the tangent image 11
+2026-04-18 15:01:21,549 - utility.blending - DEBUG - stitch the tangent image 12
+2026-04-18 15:01:21,581 - utility.blending - DEBUG - stitch the tangent image 13
+2026-04-18 15:01:21,613 - utility.blending - DEBUG - stitch the tangent image 14
+2026-04-18 15:01:21,646 - utility.blending - DEBUG - stitch the tangent image 15
+2026-04-18 15:01:21,750 - utility.blending - DEBUG - stitch the tangent image 16
+2026-04-18 15:01:21,847 - utility.blending - DEBUG - stitch the tangent image 17
+2026-04-18 15:01:21,948 - utility.blending - DEBUG - stitch the tangent image 18
+2026-04-18 15:01:22,045 - utility.blending - DEBUG - stitch the tangent image 19
+ok: a_vast_library_with_floor-to-ceiling_bookshelves_a_s42 (31457461 bytes)
+
+== [2026-04-18T15:01:33-04:00] batch complete: ok=10 fail=0 skip=0
+== outputs: 10 pcd_rgb.ply files
+== DONE ==

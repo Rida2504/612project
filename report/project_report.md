@@ -118,13 +118,31 @@ V2 PSNR ranges from 25.0 dB (art gallery s44 — detailed high-frequency walls)
 to 42.7 dB (Japanese coffee shop s42 — smooth low-frequency surfaces). LPIPS
 mirrors this: best 0.024, worst 0.128. SSIM is uniformly ≥ 0.95.
 
-### 5.3 LayerPano3D pano-depth stage
+### 5.3 LayerPano3D pano-depth stage — 10/10 scenes
 
-The LP3D `gen_panodepth.py` pipeline (our Japanese coffee shop panorama as
-input) produced a clean 1024×2048 equirect depth map + RGB point cloud
-(`pcd_rgb.ply`) in 1 min 33 s on one H100. End-to-end LP3D scene generation
-(FLUX-based layer inpainting + full-scene 3DGS) is deferred: the FLUX weight
-download (~23 GB) exceeded the time budget for this submission.
+LP3D's `gen_panodepth.py` was run against all 10 SDXL panoramas (seed 42) on
+one H100 under the cu118 conda env `lp3d`. Each scene produces:
+
+- `depth.npy` — raw 1024×2048 float depth from 360monodepth's tangent-face
+  alignment,
+- `depth.png` + `depth_rgb.png` — uint16 greyscale and pseudo-coloured
+  visualisations,
+- `pcd_rgb.ply` — RGB point cloud back-projected from equirect depth (~31 MB
+  per scene).
+
+Result: **10/10 scenes ok, 0 failures, ~47 s per scene on a single H100.**
+Depth thumbnails for each scene are under `report/figures/lp3d/` (one
+representative `pcd_rgb.ply` is preserved locally under
+`outputs/lp3d_pcd/coffee_shop_s42_lp3d_pcd.ply` for quick inspection;
+the full 10-pcd set stays on the cluster at
+`~/scratch/phase4/textworld-vr/outputs/lp3d_pcd/`).
+
+End-to-end LP3D scene generation (FLUX-based layer inpainting + full-scene
+3DGS) is deferred: the FLUX.1-dev weight download (~23 GB) exceeded the time
+budget for this submission. The depth stage is the component that most
+distinguishes LP3D from our pipeline (tangent-face 360monodepth alignment vs
+per-equirect DA-v2); having it end-to-end on the corpus makes the
+methodology comparison meaningful even without the full layered-3DGS run.
 
 ## 6. Discussion
 

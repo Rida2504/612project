@@ -1,14 +1,19 @@
 ## Nightship Status
-Tag: textworld-e2e | Step: E6b/E9 (parallel) | Phase: batch+install
+Tag: textworld-e2e | Step: 15/15 done | Phase: SHIPPED
 Working dir: /Users/yog/PRG/College/612/Project/textworld-vr
 Plan: /Users/yog/PRG/College/612/Project/nightship-textworld-e2e-plan.md
-Cluster: job 19035389 running on gpu-a6-[8-9] (~20h remaining)
+Cluster: job 19035389 still healthy on gpu-a6-[8-9] (~17h remaining)
 
-## In-flight work
-- Batch v2 running on all 8 H100s (per-worker isolated TORCH_EXTENSIONS_DIR)
-  17/30 splats on disk (23 completed tasks counting skip-exists + ok). ETA ~25 min more.
-- LayerPano3D install in tmux lp3dinstall on login node (conda env lp3d, cu118 torch)
-  Currently at step "installing torch 2.4.0 + cu118". ETA ~10-20 min more.
+## Shipped
+- E1-E5 (pre-stage, gsplat train, rsync, stage1+e2e smoke)
+- E6 (batch v1 + v2: 33 + 30 splats)
+- E7 (CLIP via open_clip, both CSVs filled)
+- E8 (compare-config + plots)
+- E9-E10 (LayerPano3D install + smoke on compute node)
+- E11 (LP3D panodepth on 10 scenes: 10/10 ok)
+- E12-E13 (WebXR site + served on login-2:8765)
+- E14 (report with real numbers: PSNR 22.03 → 33.55 dB, LPIPS 0.229 → 0.059)
+- E15 (rsync + commits d0a824d + final LP3D commit)
 
 ## Realizations
 - gsplat JIT shared $HOME/.cache/torch_extensions caused ImportError race when 8

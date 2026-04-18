@@ -335,14 +335,17 @@ def train_via_gsplat(
 
         vi = it % n_views
         gt = imgs[vi]
-        colors = torch.cat([sh0, shN], dim=1)  # (N, (K+1)^2, 3)
+        # IMPORTANT: always read from `params` dict (not local bindings) because
+        # DefaultStrategy may replace params[k] in-place during densify/prune,
+        # and stale local refs would render from the OLD parameter tensor.
+        colors = torch.cat([params["sh0"], params["shN"]], dim=1)  # (N, (K+1)^2, 3)
 
         # gsplat wants ACTUAL scales (exp of log) and ACTUAL opacities (sigmoid)
         render, alpha, info = rasterization(
-            means=means,
-            quats=F.normalize(quats, dim=-1),
-            scales=torch.exp(scales),
-            opacities=torch.sigmoid(opacities),
+            means=params["means"],
+            quats=F.normalize(params["quats"], dim=-1),
+            scales=torch.exp(params["scales"]),
+            opacities=torch.sigmoid(params["opacities"]),
             colors=colors,
             viewmats=viewmats[vi:vi + 1],
             Ks=Ks[vi:vi + 1],

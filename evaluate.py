@@ -294,6 +294,106 @@ def _find_progress_render(splat_ply: str) -> Optional[str]:
     return str(renders[-1]) if renders else None
 
 
+def _parse_inria_ply(splat_ply: str):
+    """Parse an INRIA-format 3DGS .ply into raw tensors (CPU).
+
+    Returns dict with: xyz (N,3), scales_log (N,3), quats (N,4 wxyz),
+    opacity_raw (N,), sh_dc (N,3), sh_rest (N, K-1, 3) or None.
+    """
+    from plyfile import PlyData
+    ply = PlyData.read(splat_ply)
+    v = ply["vertex"]
+    names = v.data.dtype.names
+    xyz = np.stack([v["x"], v["y"], v["z"]], axis=-1).astype(np.float32)
+    scales = np.stack([v["scale_0"], v["scale_1"], v["scale_2"]], axis=-1).astype(np.float32)
+    quats = np.stack([v["rot_0"], v["rot_1"], v["rot_2"], v["rot_3"]], axis=-1).astype(np.float32)
+    opacity = np.asarray(v["opacity"]).astype(np.float32)
+    sh_dc = np.stack([v["f_dc_0"], v["f_dc_1"], v["f_dc_2"]], axis=-1).astype(np.float32)
+    # Collect f_rest_* if present
+    rest_names = sorted([n for n in names if n.startswith("f_rest_")], key=lambda s: int(s.split("_")[-1]))
+    if rest_names:
+        rest = np.stack([np.asarray(v[n]) for n in rest_names], axis=-1).astype(np.float32)
+        # Layout: INRIA emits channel-major: K coeffs for R, then G, then B → reshape (N, 3, K) then transpose → (N, K, 3)
+        K = rest.shape[-1] // 3
+        sh_rest = rest.reshape(-1, 3, K).transpose(0, 2, 1)
+    else:
+        sh_rest = None
+    return {"xyz": xyz, "scales_log": scales, "quats": quats,
+            "opacity_raw": opacity, "sh_dc": sh_dc, "sh_rest": sh_rest}
+
+
+def render_ply_and_score(splat_ply: str, multiview_dir: str,
+                         device_str: str = "cuda", downscale: int = 2,
+                         skip_lpips: bool = False) -> dict:
+    """Render the .ply from each training view and score against GT images.
+
+    Returns {psnr, ssim, lpips, n_views} means across views. Requires CUDA gsplat.
+    """
+    import torch as _torch
+    import torch.nn.functional as _F
+
+    if device_str == "cuda" and _torch.cuda.is_available():
+        device = _torch.device("cuda")
+    elif device_str == "mps" and _torch.backends.mps.is_available():
+        device = _torch.device("mps")
+    else:
+        device = _torch.device("cpu")
+
+    try:
+        from gsplat import rasterization
+    except Exception as e:
+        return {"error": f"gsplat unavailable: {e}"}
+
+    # Load cameras + GT (re-use loader from stage3 module)
+    from stage3_3dgs.train_gsplat import load_cameras
+
+    viewmats, Ks, imgs, W, H = load_cameras(Path(multiview_dir), device, downscale=downscale)
+
+    raw = _parse_inria_ply(splat_ply)
+    means = _torch.tensor(raw["xyz"], device=device)
+    quats = _torch.tensor(raw["quats"], device=device)
+    scales = _torch.exp(_torch.tensor(raw["scales_log"], device=device))
+    opacities = _torch.sigmoid(_torch.tensor(raw["opacity_raw"], device=device))
+    sh_dc = _torch.tensor(raw["sh_dc"], device=device).unsqueeze(1)  # (N, 1, 3)
+    if raw["sh_rest"] is not None:
+        sh_rest = _torch.tensor(raw["sh_rest"], device=device)  # (N, K, 3)
+        colors = _torch.cat([sh_dc, sh_rest], dim=1)
+        # Infer SH degree: (degree+1)^2 total coefs
+        total_coefs = colors.shape[1]
+        sh_degree = int(round(total_coefs ** 0.5)) - 1
+    else:
+        colors = sh_dc
+        sh_degree = 0
+
+    psnrs, ssims, lpipses = [], [], []
+    with _torch.no_grad():
+        for i in range(imgs.shape[0]):
+            render, _, _ = rasterization(
+                means=means, quats=_F.normalize(quats, dim=-1), scales=scales,
+                opacities=opacities, colors=colors,
+                viewmats=viewmats[i:i+1], Ks=Ks[i:i+1],
+                width=W, height=H, sh_degree=sh_degree,
+                packed=False, render_mode="RGB",
+            )
+            rendered = render[0, ..., :3].clamp(0, 1).cpu().numpy()  # (H,W,3)
+            gt = imgs[i].cpu().numpy()
+            psnrs.append(compute_psnr(gt, rendered))
+            ssims.append(compute_ssim(gt, rendered))
+            if not skip_lpips:
+                try:
+                    lpipses.append(compute_lpips(gt, rendered))
+                except Exception:
+                    pass
+    out = {
+        "psnr": round(float(np.mean(psnrs)), 2),
+        "ssim": round(float(np.mean(ssims)), 4),
+        "n_views": imgs.shape[0],
+    }
+    if lpipses:
+        out["lpips"] = round(float(np.mean(lpipses)), 4)
+    return out
+
+
 def evaluate_scene(
     pipeline: str,
     scene: str,
@@ -331,8 +431,38 @@ def evaluate_scene(
     elif skip_clip:
         row["status"] = "clip-skipped"
 
-    # PSNR/SSIM/LPIPS from progress render comparison
+    # PSNR/SSIM/LPIPS: try live render from .ply first (preferred, works for
+    # gsplat trainer which doesn't save progress PNGs). Falls back to the
+    # legacy side-by-side progress render if live render isn't possible.
+    multiview_dir = None
     if splat_ply and Path(splat_ply).exists():
+        # Derive multiview dir from splat name: .../splats/<scene>_gsplat.ply → .../multiview/<scene>/
+        stem = Path(splat_ply).stem
+        scene_name = stem[: -len("_gsplat")] if stem.endswith("_gsplat") else stem
+        # Search upward to find an outputs root that contains a sibling multiview/
+        candidate_roots = [Path(splat_ply).parent.parent, Path(splat_ply).parent.parent.parent]
+        for r in candidate_roots:
+            mv = r / "multiview" / scene_name
+            if mv.exists():
+                multiview_dir = str(mv)
+                break
+
+    if splat_ply and Path(splat_ply).exists() and multiview_dir:
+        try:
+            live = render_ply_and_score(splat_ply, multiview_dir, device_str=device_str,
+                                        skip_lpips=skip_lpips)
+            if "error" not in live:
+                row["psnr"] = live.get("psnr")
+                row["ssim"] = live.get("ssim")
+                if "lpips" in live:
+                    row["lpips"] = live["lpips"]
+            else:
+                row["status"] = f"render-error:{live['error'][:40]}"
+        except Exception as e:
+            row["status"] = f"render-error:{type(e).__name__}"
+
+    # Fallback: legacy side-by-side progress PNG (if the trainer saved one)
+    if splat_ply and Path(splat_ply).exists() and row.get("psnr") is None:
         comparison_img = _find_progress_render(splat_ply)
         if comparison_img:
             img = cv2.imread(comparison_img)
@@ -352,6 +482,7 @@ def evaluate_scene(
                     except Exception as e:
                         row["status"] = f"lpips-error:{type(e).__name__}"
 
+    if splat_ply and Path(splat_ply).exists():
         # Gaussian count from .ply
         try:
             from plyfile import PlyData

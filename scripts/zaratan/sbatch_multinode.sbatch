@@ -9,7 +9,7 @@
 #SBATCH --gres=gpu:h100:4
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=128G
-#SBATCH --time=24:00:00
+#SBATCH --time=23:00:00
 #SBATCH --output=/home/%u/scratch/phase4/textworld-vr/logs/%x.%j.out
 #SBATCH --error=/home/%u/scratch/phase4/textworld-vr/logs/%x.%j.err
 # ─────────────────────────────────────────────────────────────────────────

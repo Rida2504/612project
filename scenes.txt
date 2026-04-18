@@ -1,0 +1,14 @@
+# TextWorld VR — Scene corpus for the comparative study.
+# Exactly 10 indoor prompts spanning cozy / modernist / fantasy / sci-fi / industrial.
+# Used by batch_generate.py and the user study.
+
+a cozy Japanese coffee shop with warm lighting and wooden counter
+a sunlit modernist kitchen with marble island and large windows
+a vast library with floor-to-ceiling bookshelves and tall ladders
+a lush greenhouse conservatory filled with tropical plants and hanging vines
+a grand hotel lobby with marble floors, chandeliers, and art deco details
+a neon-lit gaming room with RGB PC setups and esports posters
+a minimalist zen spa with a hot spring pool and river stones
+a contemporary art gallery with white walls and large abstract paintings
+a retrofuturistic planetarium lounge with velvet seating and a domed star ceiling
+a cyberpunk noodle bar with holographic menus and rainy city windows

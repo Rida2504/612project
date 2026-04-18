@@ -413,6 +413,7 @@ def train_via_gsplat(
             csv.writer(f).writerows(log_rows)
 
     final = log_rows[-1]
+    # log_rows columns: iter, loss, psnr, gaussians, sh_degree, elapsed_s
     return {
         "backend": "gsplat-cuda",
         "final_gaussians": N,
@@ -420,7 +421,8 @@ def train_via_gsplat(
         "device": str(device),
         "final_loss": final[1],
         "final_psnr": final[2],
-        "training_time_s": final[4],
+        "final_sh_degree": final[4],
+        "training_time_s": final[5],
         "output_ply": output_ply,
     }
 

@@ -52,7 +52,7 @@ gaussian_splatting:
   max_gaussians: 50000    # cap for adaptive densification
   lambda_ssim: 0.2        # weight for SSIM loss (0 = L1 only)
   save_interval: 500      # save progress renders every N steps
-  max_scale: 0.05         # cap Gaussian scales (world units) to prevent radial thorn artifacts from single-origin panoramic views
+  max_scale: 0.02         # cap Gaussian scales (world units) + isotropy clamp to prevent radial thorn artifacts from single-origin panoramic views
 
   # Densification schedule
   densify_start: 500

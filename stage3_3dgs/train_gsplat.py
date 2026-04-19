@@ -437,7 +437,15 @@ def train_via_gsplat(
         # training data lacks parallax (all cameras at a single origin).
         if max_scale is not None:
             with torch.no_grad():
-                params["scales"].clamp_(max=math.log(max_scale))
+                log_max = math.log(max_scale)
+                params["scales"].clamp_(max=log_max)
+                # Enforce isotropy: cap per-Gaussian anisotropy so elongated
+                # thorns cannot form along view rays. Limit the largest axis
+                # to at most ln(3) above the smallest (ratio <= 3x).
+                s = params["scales"]
+                s_min = s.min(dim=1, keepdim=True).values
+                s.clamp_(min=s_min + 0.0, max=s_min + math.log(3.0))
+                s.clamp_(max=log_max)
 
         # Post-backward hook (this is where DefaultStrategy densifies/prunes)
         if strategy is not None:

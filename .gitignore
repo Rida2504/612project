@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.venv/
+.env
+.env.*
+!.env.example
+
+# Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Pipeline outputs — large generated artifacts don't belong in git
+outputs/
+outputs_v*/
+work/
+scratch/
+_scenes/
+_models/
+*.ply
+*.ksplat
+*.npy
+*.safetensors
+*.pt
+*.pth
+*.ckpt
+*.bin
+
+# Panoramas + renders (regenerable from prompts)
+*.png
+*.jpg
+*.jpeg
+!docs/**/*.png
+!docs/**/*.jpg
+
+# LP3D checkpoints (downloaded at setup, not vendored)
+checkpoints/
+LayerPano3D/
+
+# SLURM + cluster logs
+slurm-*.out
+*.log
+nohup.out
+
+# Temporary scratch
+tmp/
+.tmp/
+*.tmp

@@ -130,6 +130,7 @@ def run_stage3_gsplat(multiview_dir: str, init_ply: str, config: dict) -> str:
         max_gaussians=gs_cfg.get("max_gaussians", 100_000),
         log_csv=log_csv,
         force_fallback=gs_cfg.get("force_fallback", False),
+        max_scale=gs_cfg.get("max_scale", None),
     )
     print(f"[Stage 3-gsplat] Splat saved: {out_ply}")
     return out_ply

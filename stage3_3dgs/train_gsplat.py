@@ -271,6 +271,7 @@ def train_via_gsplat(
     log_interval: int = 50,
     densify: bool = True,
     sh_growth_every: int = 1000,
+    max_scale: Optional[float] = None,
 ) -> dict:
     """Real gsplat training loop on CUDA.
 
@@ -432,6 +433,12 @@ def train_via_gsplat(
         for opt in optimizers.values():
             opt.step()
 
+        # Clamp log-space scales to prevent radial thorn artifacts when
+        # training data lacks parallax (all cameras at a single origin).
+        if max_scale is not None:
+            with torch.no_grad():
+                params["scales"].clamp_(max=math.log(max_scale))
+
         # Post-backward hook (this is where DefaultStrategy densifies/prunes)
         if strategy is not None:
             try:
@@ -558,6 +565,7 @@ def train_gsplat(
     max_gaussians: int = 300_000,
     log_csv: Optional[str] = None,
     force_fallback: bool = False,
+    max_scale: Optional[float] = None,
 ) -> dict:
     device = _pick_device(device_str)
     xyz, rgb = load_pointcloud_ply(init_pointcloud_ply)
@@ -579,6 +587,7 @@ def train_gsplat(
             sh_degree=sh_degree,
             log_csv=log_csv,
             max_gaussians=max_gaussians,
+            max_scale=max_scale,
         )
     else:
         reason = (
@@ -621,6 +630,13 @@ def main():
     parser.add_argument("--max-gaussians", type=int, default=300_000)
     parser.add_argument("--log-csv", type=str, default=None)
     parser.add_argument("--force-fallback", action="store_true")
+    parser.add_argument(
+        "--max-scale",
+        type=float,
+        default=None,
+        help="Clamp each Gaussian's per-axis scale (linear units). "
+        "Suppresses radial thorns from panorama-only training.",
+    )
     args = parser.parse_args()
 
     result = train_gsplat(
@@ -634,6 +650,7 @@ def main():
         max_gaussians=args.max_gaussians,
         log_csv=args.log_csv,
         force_fallback=args.force_fallback,
+        max_scale=args.max_scale,
     )
     print("\n[train_gsplat] Summary:", result)
 

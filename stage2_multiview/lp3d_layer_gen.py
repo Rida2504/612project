@@ -40,6 +40,7 @@ LP3D_ROOT = os.environ.get(
     "LP3D_ROOT",
     "/home/yog/scratch/phase4/textworld-vr/shared/LayerPano3D",
 )
+LP3D_PYTHON = os.environ.get("LP3D_PYTHON", sys.executable)
 
 
 def _run_lp3d_stage(
@@ -114,7 +115,7 @@ def run_layering(
     rc = _run_lp3d_stage(
         "panodepth",
         [
-            sys.executable,
+            LP3D_PYTHON,
             "gen_panodepth.py",
             "--input_path",
             str(rgb_dst),
@@ -132,7 +133,7 @@ def run_layering(
     rc = _run_lp3d_stage(
         "autolayering",
         [
-            sys.executable,
+            LP3D_PYTHON,
             "gen_autolayering.py",
             "--input_dir",
             out_dir,
@@ -155,7 +156,7 @@ def run_layering(
     rc = _run_lp3d_stage(
         "layerdata",
         [
-            sys.executable,
+            LP3D_PYTHON,
             "gen_layerdata.py",
             "--base_dir",
             str(layering_dir),
@@ -172,7 +173,7 @@ def run_layering(
         rc = _run_lp3d_stage(
             "traindata",
             [
-                sys.executable,
+                LP3D_PYTHON,
                 "gen_traindata.py",
                 "--layerpano_dir",
                 str(layering_dir),

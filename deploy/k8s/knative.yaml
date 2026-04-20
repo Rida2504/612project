@@ -1,0 +1,133 @@
+# Alternative deploy path: Nebius Managed Kubernetes + Knative Serving.
+# This gives true request-driven scale-to-zero (pods go to 0 when idle; Knative's
+# activator holds requests during cold start). Use this if the Nebius Serverless
+# AI endpoint's manual stop/start lifecycle isn't good enough for your usage.
+#
+# Prereqs on the cluster:
+#   - knative-serving installed (operator or Helm, any recent version works)
+#   - nvidia.com/gpu device plugin on the GPU node pool
+#   - cert-manager + external-dns if you want HTTPS on a custom domain
+#   - PVCs for /models and (optional) /scenes (or use S3 via scenes_backend)
+#
+# Apply:
+#   kubectl apply -f deploy/k8s/knative.yaml
+#
+# Replace placeholders:
+#   ${IMAGE}              e.g. cr.<parent>.nebiuscloud.net/<registry>/textworld-vr:latest
+#   ${HF_TOKEN_SECRET}    Secret holding HF_TOKEN
+#   ${S3_*_SECRET}        Secret with S3 creds
+#   ${S3_BUCKET}          scene bucket name
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: textworld-vr-secrets
+  namespace: textworld-vr
+type: Opaque
+stringData:
+  HF_TOKEN: "${HF_TOKEN}"
+  AWS_ACCESS_KEY_ID: "${S3_ACCESS_KEY_ID}"
+  AWS_SECRET_ACCESS_KEY: "${S3_SECRET_ACCESS_KEY}"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: textworld-vr-models
+  namespace: textworld-vr
+spec:
+  accessModes: [ReadWriteMany]
+  resources:
+    requests:
+      storage: 120Gi  # 80 GB HF cache + LP3D checkpoints + slack
+  storageClassName: network-ssd  # Nebius "network-ssd" class; adjust for your cluster
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: textworld-vr
+  namespace: textworld-vr
+  annotations:
+    # Scale-to-zero + autoscaling tuning
+    autoscaling.knative.dev/class: "kpa.autoscaling.knative.dev"
+    autoscaling.knative.dev/min-scale: "0"
+    autoscaling.knative.dev/max-scale: "4"
+    autoscaling.knative.dev/scale-to-zero-grace-period: "5m"
+    autoscaling.knative.dev/scale-to-zero-pod-retention-period: "2m"
+    # Generation is slow; give Knative plenty of time to hold requests during cold start.
+    autoscaling.knative.dev/initial-scale: "0"
+    # Each replica handles 1 concurrent generation job at a time.
+    autoscaling.knative.dev/target: "1"
+spec:
+  template:
+    metadata:
+      annotations:
+        # Cold start: SDXL + FLUX + LP3D deps; give the pod 20 min to be ready.
+        autoscaling.knative.dev/progress-deadline: "20m"
+    spec:
+      containerConcurrency: 1
+      timeoutSeconds: 3600  # long-poll generate endpoint
+      containers:
+        - name: app
+          image: ${IMAGE}
+          ports:
+            - containerPort: 8000
+          env:
+            - name: SCENES_BACKEND
+              value: "s3"
+            - name: S3_BUCKET
+              value: "${S3_BUCKET}"
+            - name: S3_ENDPOINT_URL
+              value: "https://storage.eu-north1.nebius.cloud"
+            - name: S3_PREFIX
+              value: "scenes/"
+            - name: AWS_DEFAULT_REGION
+              value: "eu-north1"
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: textworld-vr-secrets
+                  key: HF_TOKEN
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: textworld-vr-secrets
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: textworld-vr-secrets
+                  key: AWS_SECRET_ACCESS_KEY
+          resources:
+            limits:
+              nvidia.com/gpu: "1"
+              cpu: "16"
+              memory: "128Gi"
+            requests:
+              nvidia.com/gpu: "1"
+              cpu: "8"
+              memory: "64Gi"
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8000 }
+            initialDelaySeconds: 300  # SDXL/FLUX take a minute to load
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8000 }
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 10
+          volumeMounts:
+            - { name: models, mountPath: /models }
+            - { name: shm,    mountPath: /dev/shm }
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: textworld-vr-models
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 32Gi
+      # Schedule on GPU node pool
+      nodeSelector:
+        nvidia.com/gpu.product: "H100-SXM5-80GB"

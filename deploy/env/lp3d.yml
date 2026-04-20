@@ -1,0 +1,45 @@
+name: lp3d
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pip
+  - pytorch=2.4.0
+  - pytorch-cuda=11.8
+  - torchvision
+  - numpy
+  - pillow
+  - pybind11
+  - cmake
+  - eigen
+  - glog
+  - opencv
+  - scikit-image
+  - pip:
+      - diffusers==0.33.0
+      - transformers==4.46.0
+      - accelerate
+      - safetensors
+      - huggingface_hub
+      - xformers==0.0.27.post2
+      - scikit-learn
+      - plyfile
+      - omegaconf
+      - loguru
+      - lpips
+      - timm
+      - einops
+      - kornia
+      - segment-anything
+      - matplotlib
+      - imageio[ffmpeg]
+      - open-clip-torch
+      - opencv-python-headless
+      - trimesh
+      - open3d
+      # diff-gaussian-rasterization + simple-knn are built against torch+cu121 in the
+      # MAIN env only (see Dockerfile line ~63). They cannot be built here because
+      # lp3d's torch is cu118 while the base image toolkit is cu121 — version mismatch.
+      - git+https://github.com/cvg/LightGlue.git

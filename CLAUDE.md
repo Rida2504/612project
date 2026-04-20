@@ -1,9 +1,3 @@
-## Nightship Status
-Tag: textworld-e2e | Step: 15/15 done | Phase: SHIPPED
-Working dir: /Users/yog/PRG/College/612/Project/textworld-vr
-Plan: /Users/yog/PRG/College/612/Project/nightship-textworld-e2e-plan.md
-Cluster: job 19035389 still healthy on gpu-a6-[8-9] (~17h remaining)
-
 ## Shipped
 - E1-E5 (pre-stage, gsplat train, rsync, stage1+e2e smoke)
 - E6 (batch v1 + v2: 33 + 30 splats)
@@ -40,3 +34,41 @@ Cluster: job 19035389 still healthy on gpu-a6-[8-9] (~17h remaining)
 - E9 LayerPano3D install: tmux lp3dinstall on login — in progress
 - E10 LayerPano3D smoke: blocked on E9
 - E11 LayerPano3D on 10 scenes: blocked on E10
+
+## Nightship Status
+Tag: pano-parallax | Step: null/16 (0 done) | Type: code
+code
+code
+code
+code
+code
+code
+code
+code
+code
+code
+code
+code
+code
+code
+code
+Working dir: /Users/yog/PRG/College/612/Project/textworld-vr
+Plan: /Users/yog/PRG/College/612/Project/ultraplan-pano-parallax-plan.md
+Current step: Verify compute budget
+Install LP3D deps in main cu121 venv
+Build diff-gaussian-rasterization for cu121
+Build simple-knn for cu121
+Download FLUX.1-dev + LP3D LoRA
+SDXL pano → LP3D layer adapter
+Layered 3DGS trainer wrapper
+CLI wiring in run_pipeline.py
+Batch 10-scene layered run on 8 H100s
+Wait-for-completion Monitor
+Held-out novel-view eval harness
+Batch eval all 3 pipelines on novel views
+WebXR update for layered splats
+Playwright visual regression 3×2
+Report update with layered numbers
+Runtime parallax proof (layered vs v2)
+Verify: 
+Active jobs: none

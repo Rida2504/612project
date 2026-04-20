@@ -18,6 +18,8 @@ SCRATCH_ROOT="${SCRATCH_ROOT:-$HOME/scratch/phase4/textworld-vr}"
 OUT_ROOT="${OUT_ROOT:-$SCRATCH_ROOT}"
 CODE_ROOT="${CODE_ROOT:-$SCRATCH_ROOT/code}"
 SPLATS_SRC="${SPLATS_SRC:-$SCRATCH_ROOT/outputs/splats}"
+# Layered 3DGS (LayerPano3D) outputs — add to the site alongside v2 splats
+SPLATS_LAYERED="${SPLATS_LAYERED:-$SCRATCH_ROOT/outputs_v3/splats}"
 # Also pull from BeeOND if batch is still writing there
 BEEOND_SPLATS="${BEEOND_SPLATS:-}"
 WWW="$OUT_ROOT/www"
@@ -49,6 +51,9 @@ echo "== collecting splats"
 shopt -s nullglob
 splats=()
 for f in "$SPLATS_SRC"/*.ply; do splats+=("$f"); done
+if [ -d "$SPLATS_LAYERED" ]; then
+    for f in "$SPLATS_LAYERED"/*.ply; do splats+=("$f"); done
+fi
 if [ -n "$BEEOND_SPLATS" ] && [ -d "$BEEOND_SPLATS" ]; then
     for f in "$BEEOND_SPLATS"/*.ply; do
         # Skip if already have an identical one in SPLATS_SRC
@@ -81,7 +86,10 @@ for p in sorted(splat_dir.glob("*.ply")):
     stem = p.stem
     pipeline = "depth-gsplat"
     scene_id = stem
-    if stem.endswith("_gsplat"):
+    if stem.endswith("_layered"):
+        pipeline = "layered"
+        scene_id = stem[: -len("_layered")]
+    elif stem.endswith("_gsplat"):
         pipeline = "depth-gsplat"
         scene_id = stem[: -len("_gsplat")]
     m = re.match(r"^(.*)_s(\d+)$", scene_id)
@@ -91,7 +99,8 @@ for p in sorted(splat_dir.glob("*.ply")):
     else:
         pretty = scene_id.replace("_", " ").strip()
         seed = None
-    name = pretty[:60] + (f" (seed {seed})" if seed is not None else "")
+    tag = "[layered]" if pipeline == "layered" else "[v2]"
+    name = f"{tag} {pretty[:56]}" + (f" (seed {seed})" if seed is not None else "")
     url = f"../splats/{p.name}"
     scenes.append({
         "id": stem,

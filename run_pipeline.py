@@ -244,6 +244,9 @@ def main():
                              "the parallax-less-multiview issue of the legacy pipeline.")
     parser.add_argument("--legacy", action="store_true",
                         help="Use the legacy extract_views + random-init v2 trainer path.")
+    parser.add_argument("--pipeline", choices=["depth-gsplat", "layered"], default=None,
+                        help="layered: SDXL pano → LP3D layerdata → per-layer 3DGS (LayerPano3D). "
+                             "Overrides --use-depth-init/--legacy for stages 2-3.")
     parser.add_argument("--evaluate", action="store_true",
                         help="Run evaluation metrics after pipeline")
     parser.add_argument("--viewer", action="store_true",
@@ -292,30 +295,59 @@ def main():
         print("=" * 60)
         panorama_path = run_stage1(args.prompt, config, args.seed, output_path=None)
 
-    # Stage 2 — when --use-depth-init (default), run BOTH:
-    #   (a) pano → depth → point cloud (for 3DGS init)
-    #   (b) extract perspective views (for photometric supervision)
+    # Stage 2 — layered pipeline replaces multiview extraction with LP3D layering.
+    layerdata_dir = None
     init_ply = None
     if 2 in args.stages and multiview_dir is None and splat_ply is None:
         if panorama_path is None:
             print("ERROR: Need a panorama for Stage 2. Run Stage 1 or pass --panorama.")
             return
-        if args.use_depth_init:
+        if args.pipeline == "layered":
             print("\n" + "=" * 60)
-            print("STAGE 2a: Panorama → Depth → Point Cloud (new, depth-init)")
+            print("STAGE 2 [layered]: Panorama → LP3D panodepth + autolayering + layerdata + traindata")
             print("=" * 60)
-            init_ply = run_stage2_depth(panorama_path, config)
-        print("\n" + "=" * 60)
-        print("STAGE 2b: Panorama → Multi-View Extraction (for supervision)")
-        print("=" * 60)
-        multiview_dir = run_stage2(panorama_path, config)
+            from stage2_multiview.lp3d_layer_gen import run_layering
+            pano_stem = Path(panorama_path).stem
+            out_dir = Path(config.get("output_dir", "outputs")) / "layered" / pano_stem
+            layerdata_dir = run_layering(panorama_path, str(out_dir),
+                                         n_layers=config.get("layered", {}).get("n_layers", 3),
+                                         scene_type=config.get("layered", {}).get("scene_type", "indoor"),
+                                         skip_flux=config.get("layered", {}).get("skip_flux", False))
+        else:
+            if args.use_depth_init:
+                print("\n" + "=" * 60)
+                print("STAGE 2a: Panorama → Depth → Point Cloud (new, depth-init)")
+                print("=" * 60)
+                init_ply = run_stage2_depth(panorama_path, config)
+            print("\n" + "=" * 60)
+            print("STAGE 2b: Panorama → Multi-View Extraction (for supervision)")
+            print("=" * 60)
+            multiview_dir = run_stage2(panorama_path, config)
 
-    # Stage 3 — route to gsplat (depth-init) or legacy v2 trainer
+    # Stage 3 — route to layered trainer, gsplat (depth-init), or legacy v2 trainer
     if 3 in args.stages and splat_ply is None:
-        if multiview_dir is None:
+        if args.pipeline == "layered":
+            if layerdata_dir is None:
+                # Guess an existing layerdata dir
+                pano_stem = Path(panorama_path).stem if panorama_path else None
+                guess = Path(config.get("output_dir", "outputs")) / "layered" / (pano_stem or "")
+                if guess.exists():
+                    layerdata_dir = str(guess / "layering")
+                else:
+                    print(f"ERROR: --pipeline layered needs a layerdata dir. Expected: {guess}")
+                    return
+            print("\n" + "=" * 60)
+            print("STAGE 3 [layered]: LayerPano3D per-layer 3DGS trainer")
+            print("=" * 60)
+            from stage3_3dgs.train_layered import run_trainer
+            out_ply = str(Path(config.get("output_dir", "outputs")) / "splats"
+                          / f"{Path(layerdata_dir).parent.name}_layered.ply")
+            splat_ply = run_trainer(layerdata_dir, out_ply,
+                                    outlier_thresh=config.get("layered", {}).get("outlier_thresh", 4))
+        elif multiview_dir is None:
             print("ERROR: Need multi-view dir for Stage 3. Run Stages 1-2 or pass --multiview-dir.")
             return
-        if args.use_depth_init:
+        elif args.use_depth_init:
             if init_ply is None:
                 # Try to locate an existing pointcloud .ply
                 pano_stem = Path(panorama_path).stem if panorama_path else Path(multiview_dir).name

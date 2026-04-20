@@ -5,3 +5,4 @@ __pycache__/
 stage3_3dgs/OpenSplat/build/
 stage3_3dgs/OpenSplat/.git/
 *.DS_Store
+deploy/nebius/.secrets/

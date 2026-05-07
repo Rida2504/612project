@@ -2,16 +2,26 @@
 TextWorld VR: End-to-End Pipeline Runner
 Text → 360° Panorama → Multi-View Extraction → 3DGS → VR Export
 
+<<<<<<< HEAD
 Usage:
     python run_pipeline.py "a cozy Japanese coffee shop"
     python run_pipeline.py "a cozy Japanese coffee shop" --stages 1 2 3 --seed 42
     python run_pipeline.py "scene" --stages 3 4 --multiview-dir outputs/multiview/scene
     python run_pipeline.py "scene" --stages 4 --splat outputs/splats/scene.ply --unity-project ~/Unity/TextWorldVR
+=======
+NOTE: Stage 1 (panorama generation) TBD
+
+
+>>>>>>> main
 """
 
 from __future__ import annotations
 
 import os
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
 import argparse
@@ -22,7 +32,13 @@ from typing import Optional
 import yaml
 
 
+<<<<<<< HEAD
 def run_stage1(prompt: str, config: dict, seed: int | None, output_path: str | None) -> str:
+=======
+def run_stage1(
+    prompt: str, config: dict, seed: int | None, output_path: str | None
+) -> str:
+>>>>>>> main
     """Stage 1: Generate 360° panorama from text."""
     from stage1_panorama.generate import load_pipeline, build_prompt, generate_panorama
 
@@ -48,6 +64,10 @@ def run_stage1(prompt: str, config: dict, seed: int | None, output_path: str | N
     # Cleanup GPU memory
     del pipe
     import torch
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
 
@@ -60,7 +80,13 @@ def run_stage2(panorama_path: str, config: dict) -> str:
 
     mv_cfg = config["multiview"]
     pano_name = Path(panorama_path).stem
+<<<<<<< HEAD
     output_dir = str(Path(config.get("output_dir", "outputs")) / "multiview" / pano_name)
+=======
+    output_dir = str(
+        Path(config.get("output_dir", "outputs")) / "multiview" / pano_name
+    )
+>>>>>>> main
 
     extract_multiviews(
         panorama_path,
@@ -143,6 +169,10 @@ def run_stage3(multiview_dir: str, config: dict, use_v2: bool = True) -> str:
 
     if use_v2:
         from stage3_3dgs.train_3dgs_v2 import train as train_v2
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
         output_ply = str(output_dir / f"{scene_name}.ply")
         train_v2(
             multiview_dir,
@@ -159,6 +189,10 @@ def run_stage3(multiview_dir: str, config: dict, use_v2: bool = True) -> str:
         )
     else:
         from stage3_3dgs.train_3dgs import train as train_v1
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
         output_ply = str(output_dir / f"{scene_name}.ply")
         train_v1(
             multiview_dir,
@@ -187,7 +221,13 @@ def run_stage4(splat_ply: str, config: dict, unity_project: str | None = None) -
     return unity_project
 
 
+<<<<<<< HEAD
 def run_evaluate(prompt: str, panorama_path: str, multiview_dir: str, splat_ply: str, config: dict):
+=======
+def run_evaluate(
+    prompt: str, panorama_path: str, multiview_dir: str, splat_ply: str, config: dict
+):
+>>>>>>> main
     """Run evaluation metrics on the generated scene."""
     from evaluate import compute_clip_score, evaluate_render_quality
     import json
@@ -225,6 +265,7 @@ def main():
     )
     parser.add_argument("prompt", type=str, help="Text description of the scene")
     parser.add_argument("--config", type=str, default="configs/default.yaml")
+<<<<<<< HEAD
     parser.add_argument("--stages", nargs="+", type=int, default=[1, 2, 3],
                         help="Which stages to run (default: 1 2 3)")
     parser.add_argument("--seed", type=int, default=None)
@@ -259,6 +300,88 @@ def main():
                         help="Override gaussian_splatting.num_iters.")
     parser.add_argument("--max-gaussians", type=int, default=None,
                         help="Override gaussian_splatting.max_gaussians.")
+=======
+    parser.add_argument(
+        "--stages",
+        nargs="+",
+        type=int,
+        default=[1, 2, 3],
+        help="Which stages to run (default: 1 2 3)",
+    )
+    parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument(
+        "--panorama",
+        type=str,
+        default=None,
+        help="Skip stage 1: use existing panorama path",
+    )
+    parser.add_argument(
+        "--multiview-dir",
+        type=str,
+        default=None,
+        help="Skip stages 1-2: use existing multi-view directory",
+    )
+    parser.add_argument(
+        "--splat",
+        type=str,
+        default=None,
+        help="Skip stages 1-3: use existing .ply splat",
+    )
+    parser.add_argument(
+        "--unity-project", type=str, default=None, help="Unity project path for Stage 4"
+    )
+    parser.add_argument(
+        "--v1", action="store_true", help="Use v1 3DGS trainer (simpler, faster)"
+    )
+    parser.add_argument(
+        "--use-depth-init",
+        action="store_true",
+        default=True,
+        help="New default: Stage 2 = panorama depth → point cloud, "
+        "Stage 3 = gsplat with depth-based Gaussian init. Addresses "
+        "the parallax-less-multiview issue of the legacy pipeline.",
+    )
+    parser.add_argument(
+        "--legacy",
+        action="store_true",
+        help="Use the legacy extract_views + random-init v2 trainer path.",
+    )
+    parser.add_argument(
+        "--pipeline",
+        choices=["depth-gsplat", "layered"],
+        default=None,
+        help="layered: SDXL pano → LP3D layerdata → per-layer 3DGS (LayerPano3D). "
+        "Overrides --use-depth-init/--legacy for stages 2-3.",
+    )
+    parser.add_argument(
+        "--evaluate", action="store_true", help="Run evaluation metrics after pipeline"
+    )
+    parser.add_argument(
+        "--viewer", action="store_true", help="Open web viewer after pipeline"
+    )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default=None,
+        choices=[None, "cuda", "mps", "cpu"],
+        help="Override config device for all stages (cluster: 'cuda').",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+        help="Override config output_dir (e.g., BeeOND workdir).",
+    )
+    parser.add_argument(
+        "--iters", type=int, default=None, help="Override gaussian_splatting.num_iters."
+    )
+    parser.add_argument(
+        "--max-gaussians",
+        type=int,
+        default=None,
+        help="Override gaussian_splatting.max_gaussians.",
+    )
+>>>>>>> main
     args = parser.parse_args()
 
     # --legacy overrides --use-depth-init
@@ -281,7 +404,13 @@ def main():
     if args.iters is not None:
         config.setdefault("gaussian_splatting", {})["num_iters"] = args.iters
     if args.max_gaussians is not None:
+<<<<<<< HEAD
         config.setdefault("gaussian_splatting", {})["max_gaussians"] = args.max_gaussians
+=======
+        config.setdefault("gaussian_splatting", {})[
+            "max_gaussians"
+        ] = args.max_gaussians
+>>>>>>> main
 
     t_start = time.time()
     panorama_path = args.panorama
@@ -289,7 +418,16 @@ def main():
     splat_ply = args.splat
 
     # Stage 1
+<<<<<<< HEAD
     if 1 in args.stages and panorama_path is None and multiview_dir is None and splat_ply is None:
+=======
+    if (
+        1 in args.stages
+        and panorama_path is None
+        and multiview_dir is None
+        and splat_ply is None
+    ):
+>>>>>>> main
         print("\n" + "=" * 60)
         print("STAGE 1: Text → 360° Panorama")
         print("=" * 60)
@@ -304,6 +442,7 @@ def main():
             return
         if args.pipeline == "layered":
             print("\n" + "=" * 60)
+<<<<<<< HEAD
             print("STAGE 2 [layered]: Panorama → LP3D panodepth + autolayering + layerdata + traindata")
             print("=" * 60)
             from stage2_multiview.lp3d_layer_gen import run_layering
@@ -313,6 +452,23 @@ def main():
                                          n_layers=config.get("layered", {}).get("n_layers", 3),
                                          scene_type=config.get("layered", {}).get("scene_type", "indoor"),
                                          skip_flux=config.get("layered", {}).get("skip_flux", False))
+=======
+            print(
+                "STAGE 2 [layered]: Panorama → LP3D panodepth + autolayering + layerdata + traindata"
+            )
+            print("=" * 60)
+            from stage2_multiview.lp3d_layer_gen import run_layering
+
+            pano_stem = Path(panorama_path).stem
+            out_dir = Path(config.get("output_dir", "outputs")) / "layered" / pano_stem
+            layerdata_dir = run_layering(
+                panorama_path,
+                str(out_dir),
+                n_layers=config.get("layered", {}).get("n_layers", 3),
+                scene_type=config.get("layered", {}).get("scene_type", "indoor"),
+                skip_flux=config.get("layered", {}).get("skip_flux", False),
+            )
+>>>>>>> main
         else:
             if args.use_depth_init:
                 print("\n" + "=" * 60)
@@ -330,26 +486,59 @@ def main():
             if layerdata_dir is None:
                 # Guess an existing layerdata dir
                 pano_stem = Path(panorama_path).stem if panorama_path else None
+<<<<<<< HEAD
                 guess = Path(config.get("output_dir", "outputs")) / "layered" / (pano_stem or "")
                 if guess.exists():
                     layerdata_dir = str(guess / "layering")
                 else:
                     print(f"ERROR: --pipeline layered needs a layerdata dir. Expected: {guess}")
+=======
+                guess = (
+                    Path(config.get("output_dir", "outputs"))
+                    / "layered"
+                    / (pano_stem or "")
+                )
+                if guess.exists():
+                    layerdata_dir = str(guess / "layering")
+                else:
+                    print(
+                        f"ERROR: --pipeline layered needs a layerdata dir. Expected: {guess}"
+                    )
+>>>>>>> main
                     return
             print("\n" + "=" * 60)
             print("STAGE 3 [layered]: LayerPano3D per-layer 3DGS trainer")
             print("=" * 60)
             from stage3_3dgs.train_layered import run_trainer
+<<<<<<< HEAD
             out_ply = str(Path(config.get("output_dir", "outputs")) / "splats"
                           / f"{Path(layerdata_dir).parent.name}_layered.ply")
             splat_ply = run_trainer(layerdata_dir, out_ply,
                                     outlier_thresh=config.get("layered", {}).get("outlier_thresh", 4))
         elif multiview_dir is None:
             print("ERROR: Need multi-view dir for Stage 3. Run Stages 1-2 or pass --multiview-dir.")
+=======
+
+            out_ply = str(
+                Path(config.get("output_dir", "outputs"))
+                / "splats"
+                / f"{Path(layerdata_dir).parent.name}_layered.ply"
+            )
+            splat_ply = run_trainer(
+                layerdata_dir,
+                out_ply,
+                outlier_thresh=config.get("layered", {}).get("outlier_thresh", 4),
+            )
+        elif multiview_dir is None:
+            print(
+                "ERROR: Need multi-view dir for Stage 3. Run Stages 1-2 or pass --multiview-dir."
+            )
+>>>>>>> main
             return
         elif args.use_depth_init:
             if init_ply is None:
                 # Try to locate an existing pointcloud .ply
+<<<<<<< HEAD
                 pano_stem = Path(panorama_path).stem if panorama_path else Path(multiview_dir).name
                 guess = Path(config.get("output_dir", "outputs")) / "pointclouds" / f"{pano_stem}.ply"
                 if guess.exists():
@@ -357,6 +546,25 @@ def main():
                 else:
                     print(f"ERROR: --use-depth-init requires a point cloud. Run stage 2 or "
                           f"provide --panorama. Expected: {guess}")
+=======
+                pano_stem = (
+                    Path(panorama_path).stem
+                    if panorama_path
+                    else Path(multiview_dir).name
+                )
+                guess = (
+                    Path(config.get("output_dir", "outputs"))
+                    / "pointclouds"
+                    / f"{pano_stem}.ply"
+                )
+                if guess.exists():
+                    init_ply = str(guess)
+                else:
+                    print(
+                        f"ERROR: --use-depth-init requires a point cloud. Run stage 2 or "
+                        f"provide --panorama. Expected: {guess}"
+                    )
+>>>>>>> main
                     return
             print("\n" + "=" * 60)
             print("STAGE 3: gsplat (CUDA) with depth-initialized Gaussians")
@@ -401,6 +609,10 @@ def main():
     # Open viewer
     if args.viewer:
         import webbrowser
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
         viewer_path = Path(__file__).parent / "viewer" / "index.html"
         print(f"\nOpening viewer: {viewer_path}")
         webbrowser.open(f"file://{viewer_path}")

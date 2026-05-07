@@ -23,6 +23,10 @@ Output:
 from __future__ import annotations
 
 import os
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
 import argparse
@@ -52,6 +56,10 @@ SH_C0 = 0.28209479177387814
 def _gsplat_available() -> bool:
     try:
         import gsplat  # noqa: F401
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
         return True
     except Exception:
         return False
@@ -70,7 +78,14 @@ def load_pointcloud_ply(ply_path: str) -> Tuple[np.ndarray, np.ndarray]:
     v = ply["vertex"]
     xyz = np.stack([v["x"], v["y"], v["z"]], axis=-1).astype(np.float32)
     if all(k in v.data.dtype.names for k in ("red", "green", "blue")):
+<<<<<<< HEAD
         rgb = np.stack([v["red"], v["green"], v["blue"]], axis=-1).astype(np.float32) / 255.0
+=======
+        rgb = (
+            np.stack([v["red"], v["green"], v["blue"]], axis=-1).astype(np.float32)
+            / 255.0
+        )
+>>>>>>> main
     else:
         rgb = np.full_like(xyz, 0.5, dtype=np.float32)
     return xyz, rgb
@@ -119,8 +134,16 @@ def load_cameras(multiview_dir: Path, device: torch.device, downscale: int = 1):
         viewmats_list.append(w2c)
 
         # Load image
+<<<<<<< HEAD
         img_path = multiview_dir / "images" / frame["file_path"] if "file_path" in frame \
             else multiview_dir / "images" / f"view_{len(imgs_list):03d}.png"
+=======
+        img_path = (
+            multiview_dir / "images" / frame["file_path"]
+            if "file_path" in frame
+            else multiview_dir / "images" / f"view_{len(imgs_list):03d}.png"
+        )
+>>>>>>> main
         # fallback: just iterate view_XXX.png if file_path missing
         if not img_path.exists():
             img_path = multiview_dir / "images" / f"view_{len(imgs_list):03d}.png"
@@ -132,7 +155,13 @@ def load_cameras(multiview_dir: Path, device: torch.device, downscale: int = 1):
 
     viewmats = torch.stack(viewmats_list, dim=0).to(device)  # (N,4,4)
     imgs = torch.stack(imgs_list, dim=0).to(device)  # (N,H,W,3)
+<<<<<<< HEAD
     K = torch.tensor([[fx, 0, cx], [0, fy, cy], [0, 0, 1]], dtype=torch.float32, device=device)
+=======
+    K = torch.tensor(
+        [[fx, 0, cx], [0, fy, cy], [0, 0, 1]], dtype=torch.float32, device=device
+    )
+>>>>>>> main
     Ks = K.unsqueeze(0).expand(viewmats.shape[0], 3, 3).contiguous()
     return viewmats, Ks, imgs, W, H
 
@@ -151,17 +180,33 @@ def ssim_loss(rendered: torch.Tensor, gt: torch.Tensor) -> torch.Tensor:
     y = gt.permute(2, 0, 1).unsqueeze(0)
     win_size = 11
     sigma = 1.5
+<<<<<<< HEAD
     coords = torch.arange(win_size, device=rendered.device, dtype=rendered.dtype) - win_size // 2
     g = torch.exp(-(coords ** 2) / (2 * sigma ** 2))
+=======
+    coords = (
+        torch.arange(win_size, device=rendered.device, dtype=rendered.dtype)
+        - win_size // 2
+    )
+    g = torch.exp(-(coords**2) / (2 * sigma**2))
+>>>>>>> main
     g = g / g.sum()
     win = (g[:, None] * g[None, :])[None, None, :, :].expand(3, 1, -1, -1)
     mu_x = F.conv2d(x, win, padding=win_size // 2, groups=3)
     mu_y = F.conv2d(y, win, padding=win_size // 2, groups=3)
+<<<<<<< HEAD
     mu_x_sq, mu_y_sq, mu_xy = mu_x ** 2, mu_y ** 2, mu_x * mu_y
     sigma_x_sq = F.conv2d(x * x, win, padding=win_size // 2, groups=3) - mu_x_sq
     sigma_y_sq = F.conv2d(y * y, win, padding=win_size // 2, groups=3) - mu_y_sq
     sigma_xy = F.conv2d(x * y, win, padding=win_size // 2, groups=3) - mu_xy
     C1, C2 = 0.01 ** 2, 0.03 ** 2
+=======
+    mu_x_sq, mu_y_sq, mu_xy = mu_x**2, mu_y**2, mu_x * mu_y
+    sigma_x_sq = F.conv2d(x * x, win, padding=win_size // 2, groups=3) - mu_x_sq
+    sigma_y_sq = F.conv2d(y * y, win, padding=win_size // 2, groups=3) - mu_y_sq
+    sigma_xy = F.conv2d(x * y, win, padding=win_size // 2, groups=3) - mu_xy
+    C1, C2 = 0.01**2, 0.03**2
+>>>>>>> main
     num = (2 * mu_xy + C1) * (2 * sigma_xy + C2)
     den = (mu_x_sq + mu_y_sq + C1) * (sigma_x_sq + sigma_y_sq + C2)
     return 1.0 - (num / den).mean()
@@ -169,10 +214,17 @@ def ssim_loss(rendered: torch.Tensor, gt: torch.Tensor) -> torch.Tensor:
 
 def save_ply_inria(
     means: torch.Tensor,
+<<<<<<< HEAD
     scales: torch.Tensor,      # log scale (raw parameter)
     quats: torch.Tensor,       # wxyz (will be normalized)
     opacities: torch.Tensor,   # inverse_sigmoid (raw parameter)
     sh_dc: torch.Tensor,       # (N, 3)
+=======
+    scales: torch.Tensor,  # log scale (raw parameter)
+    quats: torch.Tensor,  # wxyz (will be normalized)
+    opacities: torch.Tensor,  # inverse_sigmoid (raw parameter)
+    sh_dc: torch.Tensor,  # (N, 3)
+>>>>>>> main
     sh_rest: Optional[torch.Tensor],  # (N, K, 3) or None
     output_path: str,
 ):
@@ -192,6 +244,7 @@ def save_ply_inria(
     n = means.shape[0]
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
+<<<<<<< HEAD
     header = ["ply", "format binary_little_endian 1.0", f"element vertex {n}",
               "property float x", "property float y", "property float z",
               "property float nx", "property float ny", "property float nz",
@@ -202,6 +255,35 @@ def save_ply_inria(
                "property float scale_0", "property float scale_1", "property float scale_2",
                "property float rot_0", "property float rot_1", "property float rot_2", "property float rot_3",
                "end_header"]
+=======
+    header = [
+        "ply",
+        "format binary_little_endian 1.0",
+        f"element vertex {n}",
+        "property float x",
+        "property float y",
+        "property float z",
+        "property float nx",
+        "property float ny",
+        "property float nz",
+        "property float f_dc_0",
+        "property float f_dc_1",
+        "property float f_dc_2",
+    ]
+    for i in range(n_rest):
+        header.append(f"property float f_rest_{i}")
+    header += [
+        "property float opacity",
+        "property float scale_0",
+        "property float scale_1",
+        "property float scale_2",
+        "property float rot_0",
+        "property float rot_1",
+        "property float rot_2",
+        "property float rot_3",
+        "end_header",
+    ]
+>>>>>>> main
     with open(output_path, "wb") as f:
         f.write(("\n".join(header) + "\n").encode("ascii"))
         zeros = np.zeros(3, dtype=np.float32)  # placeholder normals
@@ -268,14 +350,26 @@ def train_via_gsplat(
         init_xyz = init_xyz[idx]
         init_rgb = init_rgb[idx]
         N = max_gaussians
+<<<<<<< HEAD
         print(f"[gsplat] Subsampled init to {N} points (max_gaussians={max_gaussians}).")
 
     # Parameters (log-space scales; inverse-sigmoid opacity; wxyz quats; SH split DC/rest)
     means = torch.nn.Parameter(torch.tensor(init_xyz, device=device, dtype=torch.float32))
+=======
+        print(
+            f"[gsplat] Subsampled init to {N} points (max_gaussians={max_gaussians})."
+        )
+
+    # Parameters (log-space scales; inverse-sigmoid opacity; wxyz quats; SH split DC/rest)
+    means = torch.nn.Parameter(
+        torch.tensor(init_xyz, device=device, dtype=torch.float32)
+    )
+>>>>>>> main
     with torch.no_grad():
         dists = knn_mean_distance(means.detach(), k=3).clamp_min(1e-4)
         init_scale = torch.log(dists * 0.5).unsqueeze(-1).expand(-1, 3).contiguous()
     scales = torch.nn.Parameter(init_scale.clone())
+<<<<<<< HEAD
     q0 = torch.zeros(N, 4, device=device, dtype=torch.float32); q0[:, 0] = 1.0
     quats = torch.nn.Parameter(q0)
     opacities = torch.nn.Parameter(torch.full((N,), inverse_sigmoid(0.1), device=device, dtype=torch.float32))
@@ -294,6 +388,40 @@ def train_via_gsplat(
         "opacities": torch.optim.Adam([opacities], lr=lr_opacity,  eps=1e-15),
         "sh0":       torch.optim.Adam([sh0],       lr=lr_sh_dc,    eps=1e-15),
         "shN":       torch.optim.Adam([shN],       lr=lr_sh_rest,  eps=1e-15),
+=======
+    q0 = torch.zeros(N, 4, device=device, dtype=torch.float32)
+    q0[:, 0] = 1.0
+    quats = torch.nn.Parameter(q0)
+    opacities = torch.nn.Parameter(
+        torch.full((N,), inverse_sigmoid(0.1), device=device, dtype=torch.float32)
+    )
+
+    sh_dc_init = torch.tensor(
+        (init_rgb - 0.5) / SH_C0, device=device, dtype=torch.float32
+    ).unsqueeze(1)
+    sh0 = torch.nn.Parameter(sh_dc_init.clone())  # (N, 1, 3)  DC
+    n_rest = (sh_degree_max + 1) ** 2 - 1  # e.g. 15 for degree 3
+    shN = torch.nn.Parameter(
+        torch.zeros(N, n_rest, 3, device=device, dtype=torch.float32)
+    )
+
+    # Per-param optimizers (DefaultStrategy expects a dict of optimizers)
+    params = {
+        "means": means,
+        "quats": quats,
+        "scales": scales,
+        "opacities": opacities,
+        "sh0": sh0,
+        "shN": shN,
+    }
+    optimizers = {
+        "means": torch.optim.Adam([means], lr=lr_means, eps=1e-15),
+        "quats": torch.optim.Adam([quats], lr=lr_quats, eps=1e-15),
+        "scales": torch.optim.Adam([scales], lr=lr_scales, eps=1e-15),
+        "opacities": torch.optim.Adam([opacities], lr=lr_opacity, eps=1e-15),
+        "sh0": torch.optim.Adam([sh0], lr=lr_sh_dc, eps=1e-15),
+        "shN": torch.optim.Adam([shN], lr=lr_sh_rest, eps=1e-15),
+>>>>>>> main
     }
 
     # Adaptive density control strategy (optional)
@@ -303,6 +431,10 @@ def train_via_gsplat(
     if densify_enabled:
         try:
             from gsplat.strategy import DefaultStrategy
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
             strategy = DefaultStrategy(
                 prune_opa=0.005,
                 grow_grad2d=0.0002,
@@ -315,7 +447,13 @@ def train_via_gsplat(
             )
             strategy.check_sanity(params, optimizers)
             strategy_state = strategy.initialize_state()
+<<<<<<< HEAD
             print(f"[gsplat] Densification: enabled (start={strategy.refine_start_iter} stop={strategy.refine_stop_iter} every={strategy.refine_every})")
+=======
+            print(
+                f"[gsplat] Densification: enabled (start={strategy.refine_start_iter} stop={strategy.refine_stop_iter} every={strategy.refine_every})"
+            )
+>>>>>>> main
         except Exception as e:
             print(f"[gsplat] Densification: disabled ({type(e).__name__}: {e})")
             strategy = None
@@ -347,8 +485,13 @@ def train_via_gsplat(
             scales=torch.exp(params["scales"]),
             opacities=torch.sigmoid(params["opacities"]),
             colors=colors,
+<<<<<<< HEAD
             viewmats=viewmats[vi:vi + 1],
             Ks=Ks[vi:vi + 1],
+=======
+            viewmats=viewmats[vi : vi + 1],
+            Ks=Ks[vi : vi + 1],
+>>>>>>> main
             width=W,
             height=H,
             sh_degree=active_sh,
@@ -384,19 +527,48 @@ def train_via_gsplat(
         # Post-backward hook (this is where DefaultStrategy densifies/prunes)
         if strategy is not None:
             try:
+<<<<<<< HEAD
                 strategy.step_post_backward(params, optimizers, strategy_state, it, info, packed=False)
+=======
+                strategy.step_post_backward(
+                    params, optimizers, strategy_state, it, info, packed=False
+                )
+>>>>>>> main
                 # Gaussian count may have changed — refresh N for logging
                 N = int(params["means"].shape[0])
             except Exception as e:
                 if it < 5:
+<<<<<<< HEAD
                     print(f"[gsplat] step_post_backward error (continuing without densify): {e}")
+=======
+                    print(
+                        f"[gsplat] step_post_backward error (continuing without densify): {e}"
+                    )
+>>>>>>> main
 
         if (it % log_interval) == 0 or it == num_iters - 1:
             with torch.no_grad():
                 p = psnr(rendered, gt)
             elapsed = time.time() - t0
+<<<<<<< HEAD
             log_rows.append([it, round(loss.item(), 5), round(p, 3), N, active_sh, round(elapsed, 2)])
             print(f"[gsplat] iter {it:5d} loss={loss.item():.4f} psnr={p:.2f} dB  N={N}  sh={active_sh}  t={elapsed:.1f}s", flush=True)
+=======
+            log_rows.append(
+                [
+                    it,
+                    round(loss.item(), 5),
+                    round(p, 3),
+                    N,
+                    active_sh,
+                    round(elapsed, 2),
+                ]
+            )
+            print(
+                f"[gsplat] iter {it:5d} loss={loss.item():.4f} psnr={p:.2f} dB  N={N}  sh={active_sh}  t={elapsed:.1f}s",
+                flush=True,
+            )
+>>>>>>> main
 
     # Final save uses the (potentially-densified) parameters
     save_ply_inria(
@@ -467,7 +639,13 @@ def train_via_v2_fallback(
             w.writerow(["iter", "loss", "psnr", "gaussians"])
             w.writerow([0, None, None, N])
 
+<<<<<<< HEAD
     print(f"[v2-fallback] Saved depth-initialized .ply with {N} Gaussians (no training loop).")
+=======
+    print(
+        f"[v2-fallback] Saved depth-initialized .ply with {N} Gaussians (no training loop)."
+    )
+>>>>>>> main
     return {
         "backend": "v2-fallback-init-only",
         "final_gaussians": N,
@@ -492,12 +670,19 @@ def train_gsplat(
 ) -> dict:
     device = _pick_device(device_str)
     xyz, rgb = load_pointcloud_ply(init_pointcloud_ply)
+<<<<<<< HEAD
     print(f"[train_gsplat] Loaded {xyz.shape[0]} init points from {init_pointcloud_ply}")
+=======
+    print(
+        f"[train_gsplat] Loaded {xyz.shape[0]} init points from {init_pointcloud_ply}"
+    )
+>>>>>>> main
     Path(output_ply).parent.mkdir(parents=True, exist_ok=True)
 
     if not force_fallback and _gsplat_available() and device.type == "cuda":
         print("[train_gsplat] Using gsplat CUDA backend with real training loop.")
         return train_via_gsplat(
+<<<<<<< HEAD
             multiview_dir, xyz, rgb, output_ply,
             num_iters=num_iters, device=device,
             downscale=downscale, sh_degree=sh_degree,
@@ -512,16 +697,63 @@ def train_gsplat(
             num_iters=num_iters, device=device,
             downscale=downscale, sh_degree=sh_degree,
             max_gaussians=min(max_gaussians, 100_000), log_csv=log_csv,
+=======
+            multiview_dir,
+            xyz,
+            rgb,
+            output_ply,
+            num_iters=num_iters,
+            device=device,
+            downscale=downscale,
+            sh_degree=sh_degree,
+            log_csv=log_csv,
+            max_gaussians=max_gaussians,
+        )
+    else:
+        reason = (
+            "forced"
+            if force_fallback
+            else (
+                "gsplat not importable"
+                if not _gsplat_available()
+                else f"device is {device.type}, not cuda"
+            )
+        )
+        print(f"[train_gsplat] Using v2-fallback backend ({reason}).")
+        return train_via_v2_fallback(
+            multiview_dir,
+            xyz,
+            rgb,
+            output_ply,
+            num_iters=num_iters,
+            device=device,
+            downscale=downscale,
+            sh_degree=sh_degree,
+            max_gaussians=min(max_gaussians, 100_000),
+            log_csv=log_csv,
+>>>>>>> main
         )
 
 
 def main():
+<<<<<<< HEAD
     parser = argparse.ArgumentParser(description="Train 3DGS with depth-initialized Gaussians (gsplat).")
+=======
+    parser = argparse.ArgumentParser(
+        description="Train 3DGS with depth-initialized Gaussians (gsplat)."
+    )
+>>>>>>> main
     parser.add_argument("multiview_dir", type=str)
     parser.add_argument("init_pointcloud", type=str)
     parser.add_argument("--output", type=str, required=True)
     parser.add_argument("--iters", type=int, default=5000)
+<<<<<<< HEAD
     parser.add_argument("--device", type=str, default="cuda", choices=["cuda", "mps", "cpu"])
+=======
+    parser.add_argument(
+        "--device", type=str, default="cuda", choices=["cuda", "mps", "cpu"]
+    )
+>>>>>>> main
     parser.add_argument("--downscale", type=int, default=2)
     parser.add_argument("--sh-degree", type=int, default=0, choices=[0, 1, 2, 3])
     parser.add_argument("--max-gaussians", type=int, default=300_000)
@@ -530,10 +762,22 @@ def main():
     args = parser.parse_args()
 
     result = train_gsplat(
+<<<<<<< HEAD
         args.multiview_dir, args.init_pointcloud, args.output,
         num_iters=args.iters, device_str=args.device,
         downscale=args.downscale, sh_degree=args.sh_degree,
         max_gaussians=args.max_gaussians, log_csv=args.log_csv,
+=======
+        args.multiview_dir,
+        args.init_pointcloud,
+        args.output,
+        num_iters=args.iters,
+        device_str=args.device,
+        downscale=args.downscale,
+        sh_degree=args.sh_degree,
+        max_gaussians=args.max_gaussians,
+        log_csv=args.log_csv,
+>>>>>>> main
         force_fallback=args.force_fallback,
     )
     print("\n[train_gsplat] Summary:", result)

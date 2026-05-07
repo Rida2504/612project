@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Stage 1: Panorama Generation
 torch>=2.1.0
 torchvision>=0.16.0
@@ -25,12 +26,40 @@ plyfile>=1.0.3
 trimesh>=4.0.0
 
 # Plotting for reports
+=======
+# Stage 2/3 runtime (Yog's training pipeline).
+# Two-env split in production:
+#   main env (this file) — torch+cu121/py3.12, gsplat trainer + rendering + eval
+#   lp3d env (LP3D repo)  — torch+cu118/py3.9, pinned by LayerPano3D itself
+
+# Core
+torch>=2.1.0
+torchvision>=0.16.0
+numpy>=1.24.0
+Pillow>=10.0.0
+
+# Panorama I/O + resampling used by extract_views and pano_depth
+opencv-python>=4.8.0
+
+# Point-cloud + splat I/O
+plyfile>=1.0.3
+trimesh>=4.0.0
+
+# Novel-view evaluation
+open-clip-torch>=2.20.0
+scikit-image>=0.22.0
+lpips>=0.1.4
+scipy>=1.11.0
+
+# Plotting (report figures only)
+>>>>>>> main
 matplotlib>=3.8.0
 
 # Utilities
 tqdm>=4.65.0
 pyyaml>=6.0
 
+<<<<<<< HEAD
 # Optional GPU-only (uncomment on Zaratan A100/H100):
 # gsplat>=1.4.0           # CUDA-accelerated 3DGS rasterization
 # torch-scatter>=2.1.2
@@ -38,3 +67,14 @@ pyyaml>=6.0
 # Also for panorama-specific depth (choose one):
 #   pip install git+https://github.com/DepthAnything/Depth-Anything-V2   # perspective DA-v2
 #   pip install transformers>=4.36.0                                     # HF wrapper for DA-v2 (already above)
+=======
+# CUDA-only — install after the rest, needs nvcc at build time
+# gsplat>=1.4.0
+# git+https://github.com/graphdeco-inria/gaussian-splatting#subdirectory=submodules/diff-gaussian-rasterization
+# git+https://github.com/camenduru/simple-knn
+
+# HF depth model used by stage2_multiview/pano_depth.py (Depth-Anything-V2 ViT-L)
+transformers>=4.36.0
+safetensors>=0.4.0
+accelerate>=0.25.0
+>>>>>>> main

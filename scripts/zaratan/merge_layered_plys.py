@@ -9,6 +9,10 @@ where <lp_trainer/NAME>/scene/gsplat_layer{0..N}.ply exist.
 Emits one .ply with vertices concatenated in back-to-front layer order
 (important for correct alpha composition during WebGL rendering).
 """
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
 from __future__ import annotations
 
 import argparse
@@ -50,7 +54,13 @@ def merge(scene_dir: str, out_ply: str) -> None:
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
+<<<<<<< HEAD
     ap.add_argument("--scene-dir", required=True, help="dir containing scene/gsplat_layer*.ply")
+=======
+    ap.add_argument(
+        "--scene-dir", required=True, help="dir containing scene/gsplat_layer*.ply"
+    )
+>>>>>>> main
     ap.add_argument("--out", required=True, help="merged .ply output path")
     args = ap.parse_args()
     merge(args.scene_dir, args.out)

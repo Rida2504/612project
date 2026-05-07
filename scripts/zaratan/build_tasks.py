@@ -33,7 +33,13 @@ def main():
             lines.append(f"{prompt}\t{seed}")
 
     Path(args.out).write_text("\n".join(lines) + "\n")
+<<<<<<< HEAD
     print(f"wrote {len(lines)} tasks ({len(prompts)} prompts × {len(args.seeds)} seeds) → {args.out}")
+=======
+    print(
+        f"wrote {len(lines)} tasks ({len(prompts)} prompts × {len(args.seeds)} seeds) → {args.out}"
+    )
+>>>>>>> main
 
 
 if __name__ == "__main__":

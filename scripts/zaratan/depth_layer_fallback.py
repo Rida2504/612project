@@ -6,7 +6,10 @@ Invoked only if <layering_dir>/layer0/layer0_mask.png is missing after autolayer
 Reads <layering_dir>/depth.npy and writes N equal-quantile masks into
 layerN/ subdirs matching LP3D's filename conventions.
 """
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 from __future__ import annotations
 
 import argparse
@@ -28,9 +31,13 @@ def build(layering_dir: str, n_layers: int = 3) -> None:
     depth_n = (depth - d_min) / max(d_max - d_min, 1e-8)
     # Quantile-based splits: equal pixel-mass per layer (stable vs depth histogram skew)
     edges = np.quantile(depth_n, np.linspace(0, 1, n_layers + 1))
+<<<<<<< HEAD
+    print(f"[fallback] depth range [{d_min:.4f},{d_max:.4f}] quantiles: {edges.tolist()}")
+=======
     print(
         f"[fallback] depth range [{d_min:.4f},{d_max:.4f}] quantiles: {edges.tolist()}"
     )
+>>>>>>> main
     for i in range(n_layers):
         lo, hi = edges[i], edges[i + 1]
         mask = ((depth_n >= lo) & (depth_n <= hi)).astype(np.uint8) * 255

@@ -21,7 +21,10 @@ Usage:
 from __future__ import annotations
 
 import os
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
 import argparse
@@ -43,11 +46,17 @@ except ImportError:
 
 # ─── Depth estimation ────────────────────────────────────────────────────────
 
+<<<<<<< HEAD
+def _pick_device() -> str:
+    try:
+        import torch
+=======
 
 def _pick_device() -> str:
     try:
         import torch
 
+>>>>>>> main
         if torch.cuda.is_available():
             return "cuda"
         if torch.backends.mps.is_available():
@@ -99,9 +108,13 @@ def estimate_pano_depth(
         from transformers import pipeline
     except ImportError:
         if fallback_if_no_weights:
+<<<<<<< HEAD
+            warnings.warn("transformers not installed — falling back to unit-sphere depth")
+=======
             warnings.warn(
                 "transformers not installed — falling back to unit-sphere depth"
             )
+>>>>>>> main
             return _unit_sphere_depth(H, W)
         raise
 
@@ -116,9 +129,13 @@ def estimate_pano_depth(
         )
     except Exception as e:
         if fallback_if_no_weights:
+<<<<<<< HEAD
+            warnings.warn(f"Depth model load failed ({e}); falling back to unit-sphere depth")
+=======
             warnings.warn(
                 f"Depth model load failed ({e}); falling back to unit-sphere depth"
             )
+>>>>>>> main
             return np.ones((H, W), dtype=np.float32)
         raise
 
@@ -128,9 +145,13 @@ def estimate_pano_depth(
         out = depth_pipe(img)
     except Exception as e:
         if fallback_if_no_weights:
+<<<<<<< HEAD
+            warnings.warn(f"Depth inference failed ({e}); falling back to unit-sphere depth")
+=======
             warnings.warn(
                 f"Depth inference failed ({e}); falling back to unit-sphere depth"
             )
+>>>>>>> main
             return np.ones((H, W), dtype=np.float32)
         raise
     depth = np.array(out["depth"], dtype=np.float32)
@@ -150,7 +171,10 @@ def estimate_pano_depth(
 
 # ─── Equirectangular pixel → world ray ────────────────────────────────────────
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 def equirect_rays(H: int, W: int) -> np.ndarray:
     """
     Per-pixel unit ray vectors for an equirectangular image.
@@ -159,12 +183,21 @@ def equirect_rays(H: int, W: int) -> np.ndarray:
     Convention: +x right, +y up, -z forward (OpenGL). Panorama is oriented so
     u=W/2 points toward +z (front), pitch=0 at horizon (v=H/2).
     """
+<<<<<<< HEAD
+    u = (np.arange(W, dtype=np.float32) + 0.5) / W   # [0,1]
+    v = (np.arange(H, dtype=np.float32) + 0.5) / H   # [0,1]
+    theta = (u * 2.0 - 1.0) * math.pi                # longitude  [-π, π]
+    phi = (0.5 - v) * math.pi                        # latitude   [π/2, -π/2]
+
+    U, V = np.meshgrid(theta, phi)                   # (H, W)
+=======
     u = (np.arange(W, dtype=np.float32) + 0.5) / W  # [0,1]
     v = (np.arange(H, dtype=np.float32) + 0.5) / H  # [0,1]
     theta = (u * 2.0 - 1.0) * math.pi  # longitude  [-π, π]
     phi = (0.5 - v) * math.pi  # latitude   [π/2, -π/2]
 
     U, V = np.meshgrid(theta, phi)  # (H, W)
+>>>>>>> main
     cos_phi = np.cos(V)
     x = np.sin(U) * cos_phi
     y = np.sin(V)
@@ -175,7 +208,10 @@ def equirect_rays(H: int, W: int) -> np.ndarray:
 
 # ─── Point cloud construction ─────────────────────────────────────────────────
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 def pano_to_pointcloud(
     pano_path: str,
     out_ply_path: str,
@@ -195,8 +231,12 @@ def pano_to_pointcloud(
     H, W = pano.shape[:2]
 
     depth = estimate_pano_depth(
+<<<<<<< HEAD
+        pano_path, model_name=depth_model,
+=======
         pano_path,
         model_name=depth_model,
+>>>>>>> main
         fallback_if_no_weights=fallback_if_no_weights,
         use_model=use_model,
     )
@@ -205,8 +245,13 @@ def pano_to_pointcloud(
         depth_img = Image.fromarray(depth).resize((W, H), Image.BILINEAR)
         depth = np.array(depth_img, dtype=np.float32)
 
+<<<<<<< HEAD
+    rays = equirect_rays(H, W)                   # (H, W, 3)
+    points = rays * depth[..., None]             # (H, W, 3)
+=======
     rays = equirect_rays(H, W)  # (H, W, 3)
     points = rays * depth[..., None]  # (H, W, 3)
+>>>>>>> main
     points = points.reshape(-1, 3)
     colors = pano.reshape(-1, 3).astype(np.uint8)
 
@@ -221,6 +266,10 @@ def pano_to_pointcloud(
     out_path = Path(out_ply_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
+<<<<<<< HEAD
+    vertex_dtype = [("x", "f4"), ("y", "f4"), ("z", "f4"),
+                    ("red", "u1"), ("green", "u1"), ("blue", "u1")]
+=======
     vertex_dtype = [
         ("x", "f4"),
         ("y", "f4"),
@@ -229,6 +278,7 @@ def pano_to_pointcloud(
         ("green", "u1"),
         ("blue", "u1"),
     ]
+>>>>>>> main
     verts = np.empty(points.shape[0], dtype=vertex_dtype)
     verts["x"] = points[:, 0]
     verts["y"] = points[:, 1]
@@ -252,6 +302,20 @@ def pano_to_pointcloud(
 
 # ─── CLI ─────────────────────────────────────────────────────────────────────
 
+<<<<<<< HEAD
+def main():
+    parser = argparse.ArgumentParser(description="Panorama → depth → point cloud (for 3DGS init)")
+    parser.add_argument("panorama", type=str, help="Path to equirectangular panorama image")
+    parser.add_argument("--output", type=str, default=None, help="Output .ply path")
+    parser.add_argument("--model", type=str, default="depth-anything/Depth-Anything-V2-Small-hf",
+                        help="HuggingFace depth model")
+    parser.add_argument("--max-points", type=int, default=500_000)
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--fallback-if-no-weights", action="store_true",
+                        help="Use unit-sphere fallback if model unavailable (keeps plumbing runnable)")
+    parser.add_argument("--no-model", action="store_true",
+                        help="Skip depth model entirely; use unit-sphere depth. Plumbing check only.")
+=======
 
 def main():
     parser = argparse.ArgumentParser(
@@ -279,6 +343,7 @@ def main():
         action="store_true",
         help="Skip depth model entirely; use unit-sphere depth. Plumbing check only.",
     )
+>>>>>>> main
     parser.add_argument("--no-depth-viz", action="store_true")
     args = parser.parse_args()
 
@@ -294,8 +359,12 @@ def main():
         out_ply = pano_path.parent.parent / "pointclouds" / f"{scene}.ply"
 
     pano_to_pointcloud(
+<<<<<<< HEAD
+        str(pano_path), str(out_ply),
+=======
         str(pano_path),
         str(out_ply),
+>>>>>>> main
         depth_model=args.model,
         max_points=args.max_points,
         fallback_if_no_weights=args.fallback_if_no_weights,

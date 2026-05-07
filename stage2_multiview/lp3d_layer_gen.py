@@ -42,6 +42,10 @@ LP3D_ROOT = os.environ.get(
 )
 
 
+<<<<<<< HEAD
+def _run_lp3d_stage(stage_name: str, args: list[str], cwd: str = LP3D_ROOT,
+                    env: dict | None = None, timeout_s: int = 1800) -> int:
+=======
 def _run_lp3d_stage(
     stage_name: str,
     args: list[str],
@@ -49,6 +53,7 @@ def _run_lp3d_stage(
     env: dict | None = None,
     timeout_s: int = 1800,
 ) -> int:
+>>>>>>> main
     """Run a LP3D stage script; return exit code."""
     t0 = time.time()
     full_env = os.environ.copy()
@@ -57,7 +62,10 @@ def _run_lp3d_stage(
     # Force torch/cuda lib path resolution
     try:
         import torch
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
         torch_lib = os.path.join(os.path.dirname(torch.__file__), "lib")
         ld = full_env.get("LD_LIBRARY_PATH", "")
         full_env["LD_LIBRARY_PATH"] = f"{torch_lib}:{ld}" if ld else torch_lib
@@ -65,6 +73,17 @@ def _run_lp3d_stage(
         pass
 
     print(f"\n[lp3d_layer_gen] STAGE {stage_name}: {' '.join(args)}", flush=True)
+<<<<<<< HEAD
+    proc = subprocess.run(args, cwd=cwd, env=full_env, timeout=timeout_s,
+                          stdout=sys.stdout, stderr=sys.stderr)
+    dt = time.time() - t0
+    print(f"[lp3d_layer_gen] STAGE {stage_name} exit={proc.returncode} t={dt:.1f}s", flush=True)
+    return proc.returncode
+
+
+def run_layering(pano_path: str, out_dir: str, n_layers: int = 4,
+                 scene_type: str = "indoor", skip_flux: bool = False) -> str:
+=======
     proc = subprocess.run(
         args,
         cwd=cwd,
@@ -88,6 +107,7 @@ def run_layering(
     scene_type: str = "indoor",
     skip_flux: bool = False,
 ) -> str:
+>>>>>>> main
     """
     Run the LP3D layering pipeline on a single panorama.
 
@@ -114,12 +134,18 @@ def run_layering(
     rc = _run_lp3d_stage(
         "panodepth",
         [
+<<<<<<< HEAD
+            sys.executable, "gen_panodepth.py",
+            "--input_path", str(rgb_dst),
+            "--save_dir", out_dir,
+=======
             sys.executable,
             "gen_panodepth.py",
             "--input_path",
             str(rgb_dst),
             "--save_dir",
             out_dir,
+>>>>>>> main
         ],
     )
     if rc != 0:
@@ -132,20 +158,30 @@ def run_layering(
     rc = _run_lp3d_stage(
         "autolayering",
         [
+<<<<<<< HEAD
+            sys.executable, "gen_autolayering.py",
+            "--input_dir", out_dir,
+            "--scene_type", scene_type,
+=======
             sys.executable,
             "gen_autolayering.py",
             "--input_dir",
             out_dir,
             "--scene_type",
             scene_type,
+>>>>>>> main
         ],
         timeout_s=900,
     )
     if rc != 0:
+<<<<<<< HEAD
+        print(f"[lp3d_layer_gen] WARNING: gen_autolayering rc={rc}; continuing with depth-only layers", flush=True)
+=======
         print(
             f"[lp3d_layer_gen] WARNING: gen_autolayering rc={rc}; continuing with depth-only layers",
             flush=True,
         )
+>>>>>>> main
         # Minimal fallback: write a trivial layerdata.json with n_layers depth quantiles
         _write_fallback_layerdata(layering_dir, n_layers)
 
@@ -155,10 +191,15 @@ def run_layering(
     rc = _run_lp3d_stage(
         "layerdata",
         [
+<<<<<<< HEAD
+            sys.executable, "gen_layerdata.py",
+            "--base_dir", str(layering_dir),
+=======
             sys.executable,
             "gen_layerdata.py",
             "--base_dir",
             str(layering_dir),
+>>>>>>> main
         ],
         timeout_s=3600,
     )
@@ -172,6 +213,12 @@ def run_layering(
         rc = _run_lp3d_stage(
             "traindata",
             [
+<<<<<<< HEAD
+                sys.executable, "gen_traindata.py",
+                "--layerpano_dir", str(layering_dir),
+                "--save_dir", out_dir,
+                "--root", out_dir,
+=======
                 sys.executable,
                 "gen_traindata.py",
                 "--layerpano_dir",
@@ -180,14 +227,19 @@ def run_layering(
                 out_dir,
                 "--root",
                 out_dir,
+>>>>>>> main
             ],
             timeout_s=3600,
         )
         if rc != 0:
+<<<<<<< HEAD
+            print(f"[lp3d_layer_gen] WARNING: gen_traindata rc={rc} — proceeding without Infusion-inpainted back layers", flush=True)
+=======
             print(
                 f"[lp3d_layer_gen] WARNING: gen_traindata rc={rc} — proceeding without Infusion-inpainted back layers",
                 flush=True,
             )
+>>>>>>> main
 
     return str(layering_dir)
 
@@ -195,7 +247,10 @@ def run_layering(
 def _write_fallback_layerdata(layering_dir: Path, n_layers: int):
     """Trivial fallback: KMeans-less depth quantile layering if gen_autolayering fails."""
     import numpy as np
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
     depth = np.load(layering_dir / "depth.npy")
     d_min, d_max = float(depth.min()), float(depth.max())
     edges = [d_min + (d_max - d_min) * i / n_layers for i in range(n_layers + 1)]
@@ -204,6 +259,17 @@ def _write_fallback_layerdata(layering_dir: Path, n_layers: int):
         mask = ((depth >= edges[i]) & (depth < edges[i + 1])).astype("uint8") * 255
         mask_path = layering_dir / f"mask_layer_{i}.png"
         from PIL import Image
+<<<<<<< HEAD
+        Image.fromarray(mask).save(mask_path)
+        layers.append({
+            "id": i,
+            "depth_min": edges[i],
+            "depth_max": edges[i + 1],
+            "mask": str(mask_path),
+        })
+    (layering_dir / "layerdata.json").write_text(json.dumps(layers, indent=2))
+    print(f"[lp3d_layer_gen] fallback layerdata.json written with {n_layers} depth-quantile layers", flush=True)
+=======
 
         Image.fromarray(mask).save(mask_path)
         layers.append(
@@ -219,6 +285,7 @@ def _write_fallback_layerdata(layering_dir: Path, n_layers: int):
         f"[lp3d_layer_gen] fallback layerdata.json written with {n_layers} depth-quantile layers",
         flush=True,
     )
+>>>>>>> main
 
 
 def main():
@@ -227,6 +294,12 @@ def main():
     ap.add_argument("--out-dir", required=True, help="output dir for LP3D layered data")
     ap.add_argument("--n-layers", type=int, default=4)
     ap.add_argument("--scene-type", default="indoor", choices=["indoor", "outdoor"])
+<<<<<<< HEAD
+    ap.add_argument("--skip-flux", action="store_true",
+                    help="skip gen_traindata FLUX inpainting (faster smoke)")
+    args = ap.parse_args()
+    d = run_layering(args.pano, args.out_dir, args.n_layers, args.scene_type, args.skip_flux)
+=======
     ap.add_argument(
         "--skip-flux",
         action="store_true",
@@ -236,6 +309,7 @@ def main():
     d = run_layering(
         args.pano, args.out_dir, args.n_layers, args.scene_type, args.skip_flux
     )
+>>>>>>> main
     print(f"LP3D_LAYER_DIR={d}")
 
 

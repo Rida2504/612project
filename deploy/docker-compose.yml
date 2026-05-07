@@ -1,0 +1,36 @@
+# docker-compose.yml — local development / single-GPU box.
+# For multi-GPU or production use the Knative manifests under deploy/k8s/.
+
+services:
+  textworld-vr:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: textworld-vr:dev
+    environment:
+      - HF_TOKEN=${HF_TOKEN:?HF_TOKEN env var is required}
+      - SCENES_BACKEND=${SCENES_BACKEND:-local}
+      # When SCENES_BACKEND=s3, uncomment and set:
+      # - S3_ENDPOINT_URL=https://storage.eu-north1.nebiuscloud.net
+      # - S3_BUCKET=textworld-vr-scenes
+      # - S3_PREFIX=scenes/
+      # - AWS_ACCESS_KEY_ID
+      # - AWS_SECRET_ACCESS_KEY
+    volumes:
+      # Models are persisted across restarts — first boot pulls ~80 GB.
+      - ./_models:/models
+      # Local scene store (used when SCENES_BACKEND=local).
+      - ./_scenes:/scenes
+    ports:
+      - "8000:8000"   # Ray Serve (API)
+      - "8080:8080"   # nginx (viewer + local /splats/)
+      - "8265:8265"   # Ray dashboard
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    shm_size: "16gb"
+    restart: unless-stopped

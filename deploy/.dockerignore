@@ -1,0 +1,21 @@
+# keep the build context small
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ipynb_checkpoints
+**/.DS_Store
+**/node_modules
+**/.venv
+textworld-vr/outputs
+textworld-vr/outputs_v2
+textworld-vr/outputs_v3
+textworld-vr/www
+textworld-vr/logs
+textworld-vr/deploy/_models
+textworld-vr/deploy/_scenes
+textworld-vr/scripts/zaratan/*.log
+*.ply
+*.splat
+*.ksplat
+.git
+.github

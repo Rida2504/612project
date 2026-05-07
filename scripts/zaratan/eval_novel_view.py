@@ -11,7 +11,10 @@ Usage:
   python eval_novel_view.py --ply <.ply> --prompt "a cozy kitchen..." \
       --n-views 8 --radius 0.3 [--out /tmp/eval.json]
 """
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 from __future__ import annotations
 
 import argparse
@@ -29,15 +32,30 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from parallax_proof import load_ply_to_gs, camera_at  # noqa: E402
 
 
+<<<<<<< HEAD
+def render_view(gs: dict, cam_pos, look_at, width: int, height: int,
+                fov_deg: float = 90.0) -> np.ndarray:
+    from gsplat.rendering import rasterization
+=======
 def render_view(
     gs: dict, cam_pos, look_at, width: int, height: int, fov_deg: float = 90.0
 ) -> np.ndarray:
     from gsplat.rendering import rasterization
 
+>>>>>>> main
     device = gs["means"].device
     view = camera_at(cam_pos, look_at=look_at, device=str(device))
     fx = width / (2 * math.tan(math.radians(fov_deg) / 2))
     fy = height / (2 * math.tan(math.radians(fov_deg) / 2))
+<<<<<<< HEAD
+    K = torch.tensor([[fx, 0, width/2], [0, fy, height/2], [0, 0, 1]],
+                     dtype=torch.float32, device=device).unsqueeze(0)
+    sh_degree = int(math.isqrt(gs["sh"].shape[1])) - 1
+    imgs, _, _ = rasterization(
+        means=gs["means"], quats=gs["quats"], scales=gs["scales"],
+        opacities=gs["opacities"], colors=gs["sh"],
+        viewmats=view, Ks=K, width=width, height=height,
+=======
     K = torch.tensor(
         [[fx, 0, width / 2], [0, fy, height / 2], [0, 0, 1]],
         dtype=torch.float32,
@@ -54,6 +72,7 @@ def render_view(
         Ks=K,
         width=width,
         height=height,
+>>>>>>> main
         sh_degree=max(0, sh_degree),
     )
     return (imgs[0].clamp(0, 1).detach().cpu().numpy() * 255).astype(np.uint8)
@@ -77,10 +96,15 @@ def clip_score(img_np_list, prompt: str, device: str = "cuda") -> list[float]:
     """Return CLIP cosine similarity per image vs prompt."""
     import open_clip
     from PIL import Image
+<<<<<<< HEAD
+    model, _, preprocess = open_clip.create_model_and_transforms("ViT-B-32",
+        pretrained="laion2b_s34b_b79k", device=device)
+=======
 
     model, _, preprocess = open_clip.create_model_and_transforms(
         "ViT-B-32", pretrained="laion2b_s34b_b79k", device=device
     )
+>>>>>>> main
     tok = open_clip.get_tokenizer("ViT-B-32")
     model.eval()
     with torch.no_grad():
@@ -106,11 +130,16 @@ def main():
     ap.add_argument("--width", type=int, default=512)
     ap.add_argument("--height", type=int, default=512)
     ap.add_argument("--out", default=None)
+<<<<<<< HEAD
+    ap.add_argument("--save-frames-dir", default=None,
+                    help="if set, dump rendered PNGs to this directory")
+=======
     ap.add_argument(
         "--save-frames-dir",
         default=None,
         help="if set, dump rendered PNGs to this directory",
     )
+>>>>>>> main
     args = ap.parse_args()
 
     gs = load_ply_to_gs(args.ply, device="cuda")
@@ -122,11 +151,16 @@ def main():
         frames.append(img)
         if args.save_frames_dir:
             from PIL import Image
+<<<<<<< HEAD
+            os.makedirs(args.save_frames_dir, exist_ok=True)
+            Image.fromarray(img).save(os.path.join(args.save_frames_dir, f"view_{i}.png"))
+=======
 
             os.makedirs(args.save_frames_dir, exist_ok=True)
             Image.fromarray(img).save(
                 os.path.join(args.save_frames_dir, f"view_{i}.png")
             )
+>>>>>>> main
     del gs
     torch.cuda.empty_cache()
 

@@ -234,12 +234,17 @@ def extract_multiviews(
 
 
 def main():
+<<<<<<< HEAD
+    parser = argparse.ArgumentParser(description="Extract multi-view images from 360° panorama")
+    parser.add_argument("panorama", type=str, help="Path to equirectangular panorama image")
+=======
     parser = argparse.ArgumentParser(
         description="Extract multi-view images from 360° panorama"
     )
     parser.add_argument(
         "panorama", type=str, help="Path to equirectangular panorama image"
     )
+>>>>>>> main
     parser.add_argument("--config", type=str, default="configs/default.yaml")
     parser.add_argument("--output", type=str, default=None, help="Output directory")
     parser.add_argument("--num-views", type=int, default=None)
@@ -265,6 +270,12 @@ def main():
         output_dir = args.output
     else:
         pano_name = Path(args.panorama).stem
+<<<<<<< HEAD
+        output_dir = str(Path(__file__).parent.parent / config.get("output_dir", "outputs") / "multiview" / pano_name)
+
+    print(f"Extracting {num_views} views (FOV={fov}°) from: {args.panorama}")
+    extract_multiviews(args.panorama, output_dir, num_views, fov, out_w, out_h, elevations)
+=======
         output_dir = str(
             Path(__file__).parent.parent
             / config.get("output_dir", "outputs")
@@ -276,6 +287,7 @@ def main():
     extract_multiviews(
         args.panorama, output_dir, num_views, fov, out_w, out_h, elevations
     )
+>>>>>>> main
     print("Done!")
 
 

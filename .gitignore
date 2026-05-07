@@ -1,3 +1,13 @@
+<<<<<<< HEAD
+outputs/
+__pycache__/
+*.pyc
+.venv/
+stage3_3dgs/OpenSplat/build/
+stage3_3dgs/OpenSplat/.git/
+*.DS_Store
+deploy/nebius/.secrets/
+=======
 # Python
 __pycache__/
 *.py[cod]
@@ -62,3 +72,4 @@ nohup.out
 tmp/
 .tmp/
 *.tmp
+>>>>>>> main

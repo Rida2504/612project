@@ -9,7 +9,10 @@ Usage:
 For the LAYERED vs V2 comparison, run twice (once per .ply) and diff the
 offset.png frames to see parallax differences between pipelines.
 """
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 from __future__ import annotations
 
 import argparse
@@ -25,7 +28,10 @@ import torch
 def load_ply_to_gs(ply_path: str, device: str = "cuda"):
     """Load an INRIA-format .ply into gsplat tensors."""
     from plyfile import PlyData
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
     pd = PlyData.read(ply_path)
     v = pd["vertex"].data
     xyz = np.stack([v["x"], v["y"], v["z"]], axis=1).astype(np.float32)
@@ -35,6 +41,12 @@ def load_ply_to_gs(ply_path: str, device: str = "cuda"):
         [k for k in v.dtype.names if k.startswith("f_rest_")],
         key=lambda k: int(k.split("_")[-1]),
     )
+<<<<<<< HEAD
+    rest = np.stack([v[k] for k in rest_keys], axis=1).astype(np.float32) if rest_keys else None
+    opacity = v["opacity"].astype(np.float32)
+    scale = np.stack([v["scale_0"], v["scale_1"], v["scale_2"]], axis=1).astype(np.float32)
+    rot = np.stack([v["rot_0"], v["rot_1"], v["rot_2"], v["rot_3"]], axis=1).astype(np.float32)
+=======
     rest = (
         np.stack([v[k] for k in rest_keys], axis=1).astype(np.float32)
         if rest_keys
@@ -47,6 +59,7 @@ def load_ply_to_gs(ply_path: str, device: str = "cuda"):
     rot = np.stack([v["rot_0"], v["rot_1"], v["rot_2"], v["rot_3"]], axis=1).astype(
         np.float32
     )
+>>>>>>> main
 
     means = torch.from_numpy(xyz).to(device)
     scales = torch.from_numpy(scale).to(device).exp()  # log-space → linear
@@ -80,6 +93,13 @@ def camera_at(position, look_at=(0, 0, 0), up=(0, 1, 0), device: str = "cuda"):
     return torch.from_numpy(Rt).to(device).unsqueeze(0)  # (1, 4, 4)
 
 
+<<<<<<< HEAD
+def render_from(ply_path: str, camera_pos, width: int, height: int, fov_deg: float = 90.0,
+                device: str = "cuda", look_at=(0, 0, 10)) -> np.ndarray:
+    from gsplat.rendering import rasterization
+    gs = load_ply_to_gs(ply_path, device=device)
+    view = camera_at(camera_pos, look_at=look_at, device=device)  # (1, 4, 4) world-to-cam
+=======
 def render_from(
     ply_path: str,
     camera_pos,
@@ -95,10 +115,20 @@ def render_from(
     view = camera_at(
         camera_pos, look_at=look_at, device=device
     )  # (1, 4, 4) world-to-cam
+>>>>>>> main
     fx = width / (2 * math.tan(math.radians(fov_deg) / 2))
     fy = height / (2 * math.tan(math.radians(fov_deg) / 2))
     K = torch.tensor(
         [[fx, 0, width / 2], [0, fy, height / 2], [0, 0, 1]],
+<<<<<<< HEAD
+        dtype=torch.float32, device=device,
+    ).unsqueeze(0)
+    sh_degree = int(math.isqrt(gs["sh"].shape[1])) - 1
+    renders, _, _ = rasterization(
+        means=gs["means"], quats=gs["quats"], scales=gs["scales"],
+        opacities=gs["opacities"], colors=gs["sh"],
+        viewmats=view, Ks=K, width=width, height=height,
+=======
         dtype=torch.float32,
         device=device,
     ).unsqueeze(0)
@@ -113,6 +143,7 @@ def render_from(
         Ks=K,
         width=width,
         height=height,
+>>>>>>> main
         sh_degree=max(0, sh_degree),
     )
     img = renders[0].clamp(0, 1).detach().cpu().numpy()
@@ -124,24 +155,46 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ply", required=True)
     ap.add_argument("--out-dir", required=True)
+<<<<<<< HEAD
+    ap.add_argument("--offset", type=float, default=0.3, help="camera translate in x (meters)")
+    ap.add_argument("--yaw", type=float, default=0.0, help="camera yaw rotation (degrees)")
+=======
     ap.add_argument(
         "--offset", type=float, default=0.3, help="camera translate in x (meters)"
     )
     ap.add_argument(
         "--yaw", type=float, default=0.0, help="camera yaw rotation (degrees)"
     )
+>>>>>>> main
     ap.add_argument("--width", type=int, default=1024)
     ap.add_argument("--height", type=int, default=512)
     args = ap.parse_args()
 
     from PIL import Image
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
     os.makedirs(args.out_dir, exist_ok=True)
 
     # Camera is at origin looking at +z; offset view shifts by +x so parallax
     # manifests as lateral motion of near-field content. Look-at at (0,0,10)
     # avoids the degenerate "look at self" view matrix.
     print(f"[proof] rendering origin view (pos=(0,0,0) look=(0,0,10))")
+<<<<<<< HEAD
+    origin_img = render_from(args.ply, (0, 0, 0), args.width, args.height,
+                             look_at=(0, 0, 10))
+    Image.fromarray(origin_img).save(os.path.join(args.out_dir, "origin.png"))
+    print(f"[proof] rendering offset view (pos=({args.offset},0,0))")
+    offset_img = render_from(args.ply, (args.offset, 0, 0), args.width, args.height,
+                             look_at=(args.offset, 0, 10))
+    Image.fromarray(offset_img).save(os.path.join(args.out_dir, "offset.png"))
+    # Pixel-space absolute diff as a heatmap.
+    diff = np.abs(origin_img.astype(np.int16) - offset_img.astype(np.int16)).astype(np.uint8)
+    Image.fromarray(diff).save(os.path.join(args.out_dir, "diff.png"))
+    mean_diff = diff.mean()
+    print(f"[proof] mean_pixel_diff={mean_diff:.2f}/255 (higher = more parallax content)")
+=======
     origin_img = render_from(
         args.ply, (0, 0, 0), args.width, args.height, look_at=(0, 0, 10)
     )
@@ -164,6 +217,7 @@ def main():
     print(
         f"[proof] mean_pixel_diff={mean_diff:.2f}/255 (higher = more parallax content)"
     )
+>>>>>>> main
     print(f"[proof] wrote {args.out_dir}/(origin,offset,diff).png")
 
 

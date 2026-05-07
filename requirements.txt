@@ -1,3 +1,32 @@
+<<<<<<< HEAD
+# Stage 1: Panorama Generation
+torch>=2.1.0
+torchvision>=0.16.0
+diffusers>=0.27.0
+transformers>=4.36.0
+accelerate>=0.25.0
+safetensors>=0.4.0
+peft>=0.8.0
+Pillow>=10.0.0
+numpy>=1.24.0
+
+# Stage 2: Multi-View Extraction
+opencv-python>=4.8.0
+
+# Stage 3: 3DGS Training (pure PyTorch, no C++ deps)
+# (uses torch, opencv, numpy from above)
+
+# Evaluation
+scipy>=1.11.0
+lpips>=0.1.4
+scikit-image>=0.22.0
+
+# Point cloud / splat I/O
+plyfile>=1.0.3
+trimesh>=4.0.0
+
+# Plotting for reports
+=======
 # Stage 2/3 runtime (Yog's training pipeline).
 # Two-env split in production:
 #   main env (this file) — torch+cu121/py3.12, gsplat trainer + rendering + eval
@@ -23,12 +52,22 @@ lpips>=0.1.4
 scipy>=1.11.0
 
 # Plotting (report figures only)
+>>>>>>> main
 matplotlib>=3.8.0
 
 # Utilities
 tqdm>=4.65.0
 pyyaml>=6.0
 
+<<<<<<< HEAD
+# Optional GPU-only (uncomment on Zaratan A100/H100):
+# gsplat>=1.4.0           # CUDA-accelerated 3DGS rasterization
+# torch-scatter>=2.1.2
+# nerfstudio>=1.1.4       # splatfacto alternative to gsplat
+# Also for panorama-specific depth (choose one):
+#   pip install git+https://github.com/DepthAnything/Depth-Anything-V2   # perspective DA-v2
+#   pip install transformers>=4.36.0                                     # HF wrapper for DA-v2 (already above)
+=======
 # CUDA-only — install after the rest, needs nvcc at build time
 # gsplat>=1.4.0
 # git+https://github.com/graphdeco-inria/gaussian-splatting#subdirectory=submodules/diff-gaussian-rasterization
@@ -38,3 +77,4 @@ pyyaml>=6.0
 transformers>=4.36.0
 safetensors>=0.4.0
 accelerate>=0.25.0
+>>>>>>> main

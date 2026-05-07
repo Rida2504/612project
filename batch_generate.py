@@ -13,7 +13,10 @@ Usage:
 from __future__ import annotations
 
 import os
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
 import argparse
@@ -95,11 +98,15 @@ def run_batch(
                 if panorama_path is None:
                     # Try to find existing panorama
                     safe_name = prompt[:50].replace(" ", "_").replace("/", "-")
+<<<<<<< HEAD
+                    pano_path = Path(config.get("output_dir", "outputs")) / "panoramas" / f"{safe_name}_s{seed}.png"
+=======
                     pano_path = (
                         Path(config.get("output_dir", "outputs"))
                         / "panoramas"
                         / f"{safe_name}_s{seed}.png"
                     )
+>>>>>>> main
                     if pano_path.exists():
                         panorama_path = str(pano_path)
 
@@ -114,11 +121,15 @@ def run_batch(
             if 3 in stages:
                 if multiview_dir is None:
                     safe_name = prompt[:50].replace(" ", "_").replace("/", "-")
+<<<<<<< HEAD
+                    mv_dir = Path(config.get("output_dir", "outputs")) / "multiview" / f"{safe_name}_s{seed}"
+=======
                     mv_dir = (
                         Path(config.get("output_dir", "outputs"))
                         / "multiview"
                         / f"{safe_name}_s{seed}"
                     )
+>>>>>>> main
                     if mv_dir.exists():
                         multiview_dir = str(mv_dir)
 
@@ -131,7 +142,10 @@ def run_batch(
 
                     if use_v2_trainer:
                         from stage3_3dgs.train_3dgs_v2 import train as train_v2
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
                         train_v2(
                             multiview_dir,
                             splat_path,
@@ -143,7 +157,10 @@ def run_batch(
                         )
                     else:
                         from stage3_3dgs.train_3dgs import train as train_v1
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
                         train_v1(
                             multiview_dir,
                             splat_path,
@@ -169,11 +186,17 @@ def run_batch(
 
         # Free GPU memory between scenes
         import torch
+<<<<<<< HEAD
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        import gc
+=======
 
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         import gc
 
+>>>>>>> main
         gc.collect()
 
     total_time = time.time() - total_start
@@ -193,6 +216,15 @@ def run_batch(
     # Save results
     output_path = Path(config.get("output_dir", "outputs")) / "batch_results.json"
     with open(output_path, "w") as f:
+<<<<<<< HEAD
+        json.dump({
+            "total_time_s": round(total_time, 1),
+            "num_scenes": len(prompts),
+            "num_success": n_success,
+            "stages": stages,
+            "results": results,
+        }, f, indent=2)
+=======
         json.dump(
             {
                 "total_time_s": round(total_time, 1),
@@ -204,6 +236,7 @@ def run_batch(
             f,
             indent=2,
         )
+>>>>>>> main
     print(f"\n  Results: {output_path}")
 
     return results
@@ -211,6 +244,18 @@ def run_batch(
 
 def main():
     parser = argparse.ArgumentParser(description="TextWorld VR Batch Generator")
+<<<<<<< HEAD
+    parser.add_argument("--prompts-file", type=str, default=None,
+                        help="Text file with one prompt per line")
+    parser.add_argument("--prompts", nargs="+", type=str, default=None,
+                        help="Scene prompts (space-separated)")
+    parser.add_argument("--config", type=str, default="configs/default.yaml")
+    parser.add_argument("--stages", nargs="+", type=int, default=[1, 2, 3])
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--num-scenes", type=int, default=None,
+                        help="Limit number of scenes (default: all)")
+    parser.add_argument("--v1", action="store_true", help="Use v1 trainer instead of v2")
+=======
     parser.add_argument(
         "--prompts-file",
         type=str,
@@ -236,6 +281,7 @@ def main():
     parser.add_argument(
         "--v1", action="store_true", help="Use v1 trainer instead of v2"
     )
+>>>>>>> main
     args = parser.parse_args()
 
     # Determine prompts
@@ -243,14 +289,22 @@ def main():
         prompts = args.prompts
     elif args.prompts_file:
         with open(args.prompts_file) as f:
+<<<<<<< HEAD
+            prompts = [line.strip() for line in f if line.strip() and not line.startswith("#")]
+=======
             prompts = [
                 line.strip() for line in f if line.strip() and not line.startswith("#")
             ]
+>>>>>>> main
     else:
         prompts = DEFAULT_PROMPTS
 
     if args.num_scenes:
+<<<<<<< HEAD
+        prompts = prompts[:args.num_scenes]
+=======
         prompts = prompts[: args.num_scenes]
+>>>>>>> main
 
     run_batch(
         prompts,

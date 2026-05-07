@@ -1,8 +1,142 @@
 [
   {
-    "name": "Japanese coffee shop (legacy v2)",
+    "id": "japanese_coffee_shop_s42_layered",
+    "name": "Japanese coffee shop (seed 42) — Layered (parallax fix)",
+    "url": "../outputs/splats/a_cozy_Japanese_coffee_shop_s42_layered.ply",
+    "pipeline": "layerpano3d",
+    "prompt": "a cozy Japanese coffee shop with warm lighting and wooden interior",
+    "title": "Japanese coffee shop (seed 42) — Layered",
+    "splat": "../outputs/splats/a_cozy_Japanese_coffee_shop_s42_layered.ply",
+    "novel_view_clip": 0.336
+  },
+  {
+    "id": "japanese_coffee_shop_s42_v2",
+    "name": "Japanese coffee shop (seed 42) — V2 depth-gsplat (shell)",
     "url": "../outputs/splats/a_cozy_Japanese_coffee_shop_s42_v2.ply",
-    "pipeline": "legacy-v2",
-    "prompt": "a cozy Japanese coffee shop"
+    "pipeline": "depth-gsplat-v2",
+    "prompt": "a cozy Japanese coffee shop with warm lighting and wooden interior",
+    "title": "Japanese coffee shop (seed 42) — V2",
+    "splat": "../outputs/splats/a_cozy_Japanese_coffee_shop_s42_v2.ply",
+    "novel_view_clip": 0.127
+  },
+  {
+    "id": "sunlit_modernist_kitchen_s42_layered",
+    "name": "Sunlit modernist kitchen (seed 42) — Layered (parallax fix)",
+    "url": "../outputs/splats/a_sunlit_modernist_kitchen_s42_layered.ply",
+    "pipeline": "layerpano3d",
+    "prompt": "a sunlit modernist kitchen with marble island and pendant lights",
+    "title": "Sunlit modernist kitchen (seed 42) — Layered",
+    "splat": "../outputs/splats/a_sunlit_modernist_kitchen_s42_layered.ply",
+    "novel_view_clip": 0.280
+  },
+  {
+    "id": "sunlit_modernist_kitchen_s42_v2",
+    "name": "Sunlit modernist kitchen (seed 42) — V2 depth-gsplat (shell)",
+    "url": "../outputs/splats/a_sunlit_modernist_kitchen_s42_v2.ply",
+    "pipeline": "depth-gsplat-v2",
+    "prompt": "a sunlit modernist kitchen with marble island and pendant lights",
+    "title": "Sunlit modernist kitchen (seed 42) — V2",
+    "splat": "../outputs/splats/a_sunlit_modernist_kitchen_s42_v2.ply",
+    "novel_view_clip": 0.117
+  },
+  {
+    "id": "vast_library_s43_layered",
+    "name": "Vast library (seed 43) — Layered (parallax fix)",
+    "url": "../outputs/splats/a_vast_library_s43_layered.ply",
+    "pipeline": "layerpano3d",
+    "prompt": "a vast library with floor-to-ceiling bookshelves and reading nooks",
+    "title": "Vast library (seed 43) — Layered",
+    "splat": "../outputs/splats/a_vast_library_s43_layered.ply",
+    "novel_view_clip": 0.267
+  },
+  {
+    "id": "vast_library_s43_v2",
+    "name": "Vast library (seed 43) — V2 depth-gsplat (shell)",
+    "url": "../outputs/splats/a_vast_library_s43_v2.ply",
+    "pipeline": "depth-gsplat-v2",
+    "prompt": "a vast library with floor-to-ceiling bookshelves and reading nooks",
+    "title": "Vast library (seed 43) — V2",
+    "splat": "../outputs/splats/a_vast_library_s43_v2.ply",
+    "novel_view_clip": 0.180
+  },
+  {
+    "id": "cyberpunk_noodle_bar_s43_layered",
+    "name": "Cyberpunk noodle bar (seed 43) — Layered (parallax fix)",
+    "url": "../outputs/splats/a_cyberpunk_noodle_bar_s43_layered.ply",
+    "pipeline": "layerpano3d",
+    "prompt": "a cyberpunk noodle bar with holographic menus and neon signs",
+    "title": "Cyberpunk noodle bar (seed 43) — Layered",
+    "splat": "../outputs/splats/a_cyberpunk_noodle_bar_s43_layered.ply",
+    "novel_view_clip": 0.299
+  },
+  {
+    "id": "cyberpunk_noodle_bar_s43_v2",
+    "name": "Cyberpunk noodle bar (seed 43) — V2 depth-gsplat (shell)",
+    "url": "../outputs/splats/a_cyberpunk_noodle_bar_s43_v2.ply",
+    "pipeline": "depth-gsplat-v2",
+    "prompt": "a cyberpunk noodle bar with holographic menus and neon signs",
+    "title": "Cyberpunk noodle bar (seed 43) — V2",
+    "splat": "../outputs/splats/a_cyberpunk_noodle_bar_s43_v2.ply",
+    "novel_view_clip": 0.192
+  },
+  {
+    "id": "minimalist_zen_spa_s44_layered",
+    "name": "Minimalist zen spa (seed 44) — Layered (parallax fix)",
+    "url": "../outputs/splats/a_minimalist_zen_spa_s44_layered.ply",
+    "pipeline": "layerpano3d",
+    "prompt": "a minimalist zen spa with a hot spring pool and river stones",
+    "title": "Minimalist zen spa (seed 44) — Layered",
+    "splat": "../outputs/splats/a_minimalist_zen_spa_s44_layered.ply",
+    "novel_view_clip": 0.299
+  },
+  {
+    "id": "minimalist_zen_spa_s44_v2",
+    "name": "Minimalist zen spa (seed 44) — V2 depth-gsplat (shell)",
+    "url": "../outputs/splats/a_minimalist_zen_spa_s44_v2.ply",
+    "pipeline": "depth-gsplat-v2",
+    "prompt": "a minimalist zen spa with a hot spring pool and river stones",
+    "title": "Minimalist zen spa (seed 44) — V2",
+    "splat": "../outputs/splats/a_minimalist_zen_spa_s44_v2.ply",
+    "novel_view_clip": 0.138
+  },
+  {
+    "id": "grand_hotel_lobby_s42_layered",
+    "name": "Grand hotel lobby (seed 42) — Layered (parallax fix)",
+    "url": "../outputs/splats/a_grand_hotel_lobby_s42_layered.ply",
+    "pipeline": "layerpano3d",
+    "prompt": "a grand hotel lobby with marble floors, chandelier, and seating",
+    "title": "Grand hotel lobby (seed 42) — Layered",
+    "splat": "../outputs/splats/a_grand_hotel_lobby_s42_layered.ply",
+    "novel_view_clip": 0.224
+  },
+  {
+    "id": "grand_hotel_lobby_s42_v2",
+    "name": "Grand hotel lobby (seed 42) — V2 depth-gsplat (shell)",
+    "url": "../outputs/splats/a_grand_hotel_lobby_s42_v2.ply",
+    "pipeline": "depth-gsplat-v2",
+    "prompt": "a grand hotel lobby with marble floors, chandelier, and seating",
+    "title": "Grand hotel lobby (seed 42) — V2",
+    "splat": "../outputs/splats/a_grand_hotel_lobby_s42_v2.ply",
+    "novel_view_clip": 0.119
+  },
+  {
+    "id": "neon_lit_gaming_room_s43_layered",
+    "name": "Neon-lit gaming room (seed 43) — Layered (parallax fix)",
+    "url": "../outputs/splats/a_neon-lit_gaming_room_s43_layered.ply",
+    "pipeline": "layerpano3d",
+    "prompt": "a neon-lit gaming room with RGB PC setups and esports posters",
+    "title": "Neon-lit gaming room (seed 43) — Layered",
+    "splat": "../outputs/splats/a_neon-lit_gaming_room_s43_layered.ply",
+    "novel_view_clip": 0.334
+  },
+  {
+    "id": "neon_lit_gaming_room_s43_v2",
+    "name": "Neon-lit gaming room (seed 43) — V2 depth-gsplat (shell)",
+    "url": "../outputs/splats/a_neon-lit_gaming_room_s43_v2.ply",
+    "pipeline": "depth-gsplat-v2",
+    "prompt": "a neon-lit gaming room with RGB PC setups and esports posters",
+    "title": "Neon-lit gaming room (seed 43) — V2",
+    "splat": "../outputs/splats/a_neon-lit_gaming_room_s43_v2.ply",
+    "novel_view_clip": 0.245
   }
 ]
